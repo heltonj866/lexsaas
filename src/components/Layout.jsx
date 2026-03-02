@@ -19,7 +19,7 @@ export function Layout() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+    <div className="flex h-[100dvh] bg-slate-50 overflow-hidden font-sans">
       
       {/* OVERLAY PARA MOBILE (Fundo escuro/desfocado) */}
       {isSidebarOpen && (
