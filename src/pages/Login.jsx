@@ -45,38 +45,38 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-white sm:bg-slate-50 selection:bg-indigo-100 selection:text-indigo-900">
       
       {/* LADO ESQUERDO: FORMULÁRIO DE LOGIN */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-16 xl:px-24 bg-white relative">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 sm:px-16 xl:px-24 bg-white relative shadow-2xl shadow-slate-200/50 z-10 animate-in fade-in slide-in-from-left-8 duration-500">
         
-        {/* Logo no topo */}
-        <div className="absolute top-8 left-8 sm:left-16 xl:left-24 flex items-center gap-2">
-          <div className="bg-slate-900 p-2 rounded-lg">
+        {/* Logo no topo (Mobile/Desktop) */}
+        <div className="absolute top-6 left-6 sm:top-8 sm:left-12 xl:left-24 flex items-center gap-2">
+          <div className="bg-slate-900 p-2 rounded-xl shadow-md shadow-slate-900/20">
             <Scale size={20} className="text-white" />
           </div>
           <span className="text-xl font-bold text-slate-900 tracking-tight">Lex<span className="text-indigo-600">SaaS</span></span>
         </div>
 
-        <div className="w-full max-w-sm mx-auto mt-12 lg:mt-0">
-          <h2 className="text-3xl font-extrabold text-slate-900 mb-2">Bem-vindo de volta</h2>
-          <p className="text-sm text-slate-500 mb-6">
-            Acesse seu painel de controle e gerencie seu escritório de forma inteligente.
+        <div className="w-full max-w-sm mx-auto mt-16 sm:mt-0">
+          <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Bem-vindo de volta</h2>
+          <p className="text-sm text-slate-500 mb-8">
+            Aceda ao seu painel de controle e gira o seu escritório de forma inteligente.
           </p>
 
-          {/* 👇 AVISO DE MODO DEMONSTRAÇÃO 👇 */}
-          <div className="mb-6 bg-sky-50 border border-sky-200 p-4 rounded-xl flex items-start gap-3 animate-in fade-in duration-300">
+          {/* 👇 AVISO DE MODO DEMONSTRAÇÃO (Otimizado para Mobile) 👇 */}
+          <div className="mb-6 bg-sky-50 border border-sky-200 p-4 rounded-2xl flex items-start gap-3 animate-in fade-in duration-300">
             <AlertCircle size={20} className="text-sky-600 shrink-0 mt-0.5" />
             <div>
               <h4 className="text-sm font-bold text-sky-800">Modo de Demonstração</h4>
               <p className="text-xs text-sky-600 mt-1 leading-relaxed">
-                Ambiente de testes. Preencha qualquer e-mail para aceder à interface do sistema. Não é necessária uma senha real.
+                Ambiente de testes. Preencha qualquer e-mail para aceder à interface. Não é necessária senha real.
               </p>
             </div>
           </div>
 
           {error && (
-            <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+            <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
               <AlertCircle size={20} className="text-red-500 shrink-0 mt-0.5" />
               <p className="text-sm font-medium text-red-800">{error}</p>
             </div>
@@ -85,15 +85,15 @@ export default function Login() {
           <form onSubmit={handleLogin} className="space-y-5">
             {/* E-MAIL */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">E-mail corporativo</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">E-mail corporativo</label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
                 </div>
                 <input
                   type="email" required
-                  className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all bg-slate-50 focus:bg-white outline-none"
-                  placeholder="advogado@escritorio.com.br"
+                  className="block w-full pl-12 pr-4 py-3.5 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all bg-slate-50 focus:bg-white outline-none shadow-sm"
+                  placeholder="advogado@escritorio.com"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                 />
@@ -102,19 +102,19 @@ export default function Login() {
 
             {/* SENHA */}
             <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="block text-sm font-semibold text-slate-700">Senha de acesso</label>
-                <Link to="#" className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+              <div className="flex justify-between items-center mb-1.5 ml-1">
+                <label className="block text-xs font-bold text-slate-500 uppercase">Senha de acesso</label>
+                <Link to="#" className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors active:scale-95">
                   Esqueceu a senha?
                 </Link>
               </div>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'} required
-                  className="block w-full pl-11 pr-12 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all bg-slate-50 focus:bg-white outline-none"
+                  className="block w-full pl-12 pr-12 py-3.5 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all bg-slate-50 focus:bg-white outline-none shadow-sm"
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -122,7 +122,7 @@ export default function Login() {
                 <button 
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-indigo-600 transition-colors active:scale-90"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -130,58 +130,59 @@ export default function Login() {
             </div>
 
             {/* LEMBRAR DE MIM */}
-            <div className="flex items-center">
+            <div className="flex items-center ml-1 mt-2">
               <input
                 id="remember-me" type="checkbox"
                 checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded cursor-pointer"
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded cursor-pointer transition-colors"
               />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-600 cursor-pointer select-none">
-                Lembrar minhas credenciais
+              <label htmlFor="remember-me" className="ml-2 block text-sm font-medium text-slate-600 cursor-pointer select-none">
+                Manter sessão iniciada
               </label>
             </div>
 
             {/* BOTÃO SUBMIT */}
             <button
               type="submit" disabled={loading}
-              className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl shadow-md shadow-indigo-200/50 text-sm font-bold text-white bg-slate-900 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all transform hover:-translate-y-0.5"
+              className="w-full flex justify-center items-center gap-2 py-4 px-4 mt-4 rounded-2xl shadow-xl shadow-indigo-600/20 text-sm font-bold text-white bg-slate-900 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
             >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : 'Acessar o Sistema'}
+              {loading ? <Loader2 className="animate-spin" size={20} /> : 'Aceder ao Sistema'}
             </button>
           </form>
           
-          <div className="mt-8 flex items-center justify-center gap-2 text-sm text-slate-500">
+          <div className="mt-8 flex items-center justify-center gap-2 text-xs font-medium text-slate-400">
             <ShieldCheck size={16} className="text-emerald-500" />
-            <span>Ambiente seguro e criptografado.</span>
+            <span>Ambiente 100% seguro e encriptado.</span>
           </div>
         </div>
       </div>
 
-      {/* LADO DIREITO: BRANDING */}
+      {/* LADO DIREITO: BRANDING (Escondido em ecrãs menores) */}
       <div className="hidden lg:flex lg:w-1/2 bg-slate-900 flex-col justify-between relative overflow-hidden p-12 xl:p-24">
-        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-600/20 blur-3xl"></div>
-        <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-sky-500/20 blur-3xl"></div>
+        {/* Elemento de design decorativo de fundo */}
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-600/20 blur-[100px] animate-pulse" style={{ animationDuration: '4s' }}></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-sky-500/20 blur-[100px] animate-pulse" style={{ animationDuration: '6s' }}></div>
 
-        <div className="relative z-10 text-white mt-12">
-          <h1 className="text-4xl xl:text-5xl font-bold leading-tight mb-6">
+        <div className="relative z-10 text-white mt-16 animate-in fade-in slide-in-from-right-8 duration-700">
+          <h1 className="text-4xl xl:text-5xl font-black leading-tight mb-6 tracking-tight">
             Eleve a gestão do seu escritório a um novo patamar.
           </h1>
-          <p className="text-lg text-slate-300 mb-8 max-w-md">
+          <p className="text-lg text-slate-300 mb-10 max-w-md font-medium leading-relaxed">
             Automatize fluxos, controle prazos fatais com precisão e ofereça uma experiência premium aos seus clientes.
           </p>
 
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 size={24} className="text-indigo-400" />
-              <span className="text-slate-200 font-medium">Sincronização com DataJud e Tribunais</span>
+          <div className="space-y-5">
+            <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm w-fit">
+              <div className="bg-indigo-500/20 p-2 rounded-xl text-indigo-400"><CheckCircle2 size={24} /></div>
+              <span className="text-slate-200 font-bold">Sincronização com DataJud e Tribunais</span>
             </div>
-            <div className="flex items-center gap-3">
-              <CheckCircle2 size={24} className="text-indigo-400" />
-              <span className="text-slate-200 font-medium">Gestão inteligente de GED e Documentos</span>
+            <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm w-fit">
+              <div className="bg-sky-500/20 p-2 rounded-xl text-sky-400"><CheckCircle2 size={24} /></div>
+              <span className="text-slate-200 font-bold">Gestão inteligente de GED e Documentos</span>
             </div>
-            <div className="flex items-center gap-3">
-              <CheckCircle2 size={24} className="text-indigo-400" />
-              <span className="text-slate-200 font-medium">Inteligência Artificial Integrada</span>
+            <div className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm w-fit">
+              <div className="bg-rose-500/20 p-2 rounded-xl text-rose-400"><CheckCircle2 size={24} /></div>
+              <span className="text-slate-200 font-bold">Inteligência Artificial Integrada</span>
             </div>
           </div>
         </div>
