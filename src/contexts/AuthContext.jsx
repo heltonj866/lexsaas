@@ -42,7 +42,9 @@ export function AuthProvider({ children }) {
 
   const signIn = async (email, password) => {
     // 1. Chamada à raiz (ignora o baseURL do api.js) para buscar o cookie
-    await api.get('/sanctum/csrf-cookie');
+    await axios.get('https://legaltech.neotek.com.br/sanctum/csrf-cookie', {
+    withCredentials: true
+    });
     
     // 2. Chamada normal à API de login (o api.js já adiciona o /api)
     const response = await api.post('/login', { email, password });
