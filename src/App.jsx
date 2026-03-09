@@ -4,7 +4,10 @@ import { Toaster } from 'react-hot-toast';
 // 1. IMPORTANTE: Importar o Provedor de Autenticação
 import { AuthProvider } from './contexts/AuthContext'; 
 
-import Login from './pages/Login';
+import Login from './pages/auth/Login';
+import Cadastro from "./pages/auth/Cadastro";
+import EsqueciSenha from "./pages/auth/EsqueciSenha";
+import RedefinirSenha from "./pages/auth/RedefinirSenha";
 import Dashboard from './pages/Dashboard';
 import Processos from './pages/Processos';
 import Clientes from './pages/Clientes';
@@ -12,6 +15,7 @@ import Financeiro from './pages/Financeiro';
 import Tarefas from './pages/Tarefas';
 import Documentos from './pages/Documentos';
 import ClienteDetalhes from './pages/ClienteDetalhes';
+import ProcessoDetalhes from './pages/ProcessoDetalhes';
 
 // 👇 1. IMPORTAMOS A NOVA PÁGINA AQUI 👇
 import Configuracoes from './pages/Configuracoes'; 
@@ -31,6 +35,9 @@ function App() {
           {/* Rota Pública */}
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
 
           {/* 3. ESTRUTURA DE ROTAS PROTEGIDAS */}
           <Route element={<ProtectedRoute />}>
@@ -43,6 +50,7 @@ function App() {
               <Route path="/financeiro" element={<Financeiro />} />
               <Route path="/tarefas" element={<Tarefas />} />
               <Route path="/documentos" element={<Documentos />} />
+              <Route path="/processos/:id" element={<ProcessoDetalhes />} />
               
               {/* 👇 2. ADICIONAMOS A ROTA DE CONFIGURAÇÕES AQUI 👇 */}
               <Route path="/configuracoes" element={<Configuracoes />} />

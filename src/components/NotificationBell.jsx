@@ -1,11 +1,32 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import { Bell, FileText, AlertCircle, CheckCircle, Info } from 'lucide-react';
+import api from '../services/api';
 
 export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const dropdownRef = useRef(null);
 
-  // Fecha o dropdown se clicar fora dele
+  // Busca as notificações no banco de dados
+  const carregarNotificacoes = async () => {
+    try {
+      const response = await api.get('/notificacoes');
+      setNotifications(response.data);
+    } catch (error) {
+      console.error("Erro ao buscar notificações", error);
+    }
+  };
+
+  // Carrega ao iniciar e atualiza quando abre o menu
+  useEffect(() => {
+    carregarNotificacoes();
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) carregarNotificacoes();
+  }, [isOpen]);
+
+  // Fecha o dropdown se clicar fora
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -16,13 +37,41 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const notifications = [
-    { id: 1, title: 'Novo Documento', desc: 'Contrato Social enviado por MG Construtora.', time: 'Há 5 min', icon: FileText, color: 'text-sky-500', bg: 'bg-sky-100 dark:bg-sky-900/30' },
-    { id: 2, title: 'Prazo Vencendo', desc: 'Petição Inicial - Maria Souza vence hoje.', time: 'Há 2 horas', icon: AlertCircle, color: 'text-rose-500', bg: 'bg-rose-100 dark:bg-rose-900/30' },
-    { id: 3, title: 'Processo Atualizado', desc: 'Sentença favorável publicada no Diário.', time: 'Ontem', icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
-  ];
+  // Marcar todas como lidas
+  const marcarTodasLidas = async (e) => {
+    e.stopPropagation(); // Impede que o clique "vaze" e feche o menu acidentalmente
+    e.preventDefault();
+    
+    try {
+      await api.put('/notificacoes/ler-todas');
+      // Atualiza o estado local para dar a sensação de resposta imediata
+      setNotifications(notifications.map(n => ({ ...n, lida: true })));
+    } catch (error) {
+      console.error("Erro ao marcar como lidas", error);
+    }
+  };
 
-  const unreadCount = 2; // Simulação de notificações não lidas
+  // Marcar uma específica como lida ao clicar nela
+  const clicarNotificacao = async (id, lida) => {
+    if (!lida) {
+      try {
+        await api.put(`/notificacoes/${id}/ler`);
+        setNotifications(notifications.map(n => n.id === id ? { ...n, lida: true } : n));
+      } catch (error) {}
+    }
+  };
+
+  // Mapeia o tipo da notificação para um ícone e cor
+  const getIconConfig = (tipo) => {
+    switch(tipo) {
+      case 'documento': return { icon: FileText, color: 'text-sky-500', bg: 'bg-sky-100 dark:bg-sky-900/30' };
+      case 'prazo': return { icon: AlertCircle, color: 'text-rose-500', bg: 'bg-rose-100 dark:bg-rose-900/30' };
+      case 'processo': return { icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-100 dark:bg-emerald-900/30' };
+      default: return { icon: Info, color: 'text-indigo-500', bg: 'bg-indigo-100 dark:bg-indigo-900/30' };
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.lida).length;
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -31,9 +80,9 @@ export default function NotificationBell() {
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors focus:outline-none"
       >
-        <Bell size={22} className={unreadCount > 0 ? "animate-pulse" : ""} />
+        <Bell size={22} className={unreadCount > 0 ? "animate-pulse text-indigo-500" : ""} />
         
-        {/* Bolinha vermelha de notificação */}
+        {/* Bolinha vermelha */}
         {unreadCount > 0 && (
           <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -48,25 +97,34 @@ export default function NotificationBell() {
           
           <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 transition-colors">
             <h3 className="font-bold text-slate-800 dark:text-slate-100">Notificações</h3>
-            <span className="text-xs font-bold bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 px-2 py-1 rounded-full">
-              {unreadCount} novas
-            </span>
+            {unreadCount > 0 && (
+              <span className="text-xs font-bold bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 px-2 py-1 rounded-full">
+                {unreadCount} novas
+              </span>
+            )}
           </div>
 
           <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
             {notifications.length > 0 ? (
               <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
                 {notifications.map((notif) => {
-                  const Icon = notif.icon;
+                  const { icon: Icon, color, bg } = getIconConfig(notif.tipo);
                   return (
-                    <div key={notif.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer flex gap-4">
-                      <div className={`shrink-0 p-2.5 rounded-full h-fit transition-colors ${notif.bg}`}>
-                        <Icon size={18} className={notif.color} />
+                    <div 
+                      key={notif.id} 
+                      onClick={() => clicarNotificacao(notif.id, notif.lida)}
+                      className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer flex gap-4 ${!notif.lida ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : ''}`}
+                    >
+                      <div className={`shrink-0 p-2.5 rounded-full h-fit transition-colors ${bg}`}>
+                        <Icon size={18} className={color} />
                       </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-0.5 transition-colors">{notif.title}</h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 transition-colors">{notif.desc}</p>
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-2 block uppercase tracking-wider">{notif.time}</span>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <h4 className={`text-sm mb-0.5 transition-colors ${!notif.lida ? 'font-bold text-slate-900 dark:text-white' : 'font-medium text-slate-700 dark:text-slate-200'}`}>{notif.titulo}</h4>
+                          {!notif.lida && <span className="h-2 w-2 bg-indigo-500 rounded-full shrink-0 mt-1.5"></span>}
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 transition-colors">{notif.mensagem}</p>
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-2 block uppercase tracking-wider">{notif.tempo}</span>
                       </div>
                     </div>
                   );
@@ -80,11 +138,13 @@ export default function NotificationBell() {
             )}
           </div>
 
-          <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 transition-colors">
-            <button className="w-full text-center text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors">
-              Marcar todas como lidas
-            </button>
-          </div>
+          {unreadCount > 0 && (
+            <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 transition-colors">
+              <button onClick={marcarTodasLidas} className="w-full text-center text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors">
+                Marcar todas como lidas
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

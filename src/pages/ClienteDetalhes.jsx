@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Phone, Mail, Briefcase, FileText, Download, Sparkles, Loader2, Plus, Search, X, Edit, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, Briefcase, FileText, Plus, Search, X, Edit, Trash2, Upload, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '../services/api'; // Ajuste o caminho se necessário (ex: '../services/api')
 
 export default function ClienteDetalhes() {
   const { id } = useParams();
@@ -9,72 +10,128 @@ export default function ClienteDetalhes() {
   const [cliente, setCliente] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const [resumosIA, setResumosIA] = useState({});
-  const [loadingIA, setLoadingIA] = useState({});
   const [isProcessoModalOpen, setIsProcessoModalOpen] = useState(false);
   const [buscandoCnj, setBuscandoCnj] = useState(false);
   const [novoProcesso, setNovoProcesso] = useState({ titulo: '', numero_processo: '', tipo_acao: '', vara: '', status: 'Ativo' });
 
+  // 👇 1. Busca Real do Cliente com Processos e Documentos 👇
   async function carregarCliente() {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    const mockData = {
-      id: id, nome: id === '2' ? 'Construtora MG' : 'João Batista Júnior', cpf_cnpj: id === '2' ? '12.345.678/0001-99' : '111.222.333-44', telefone: id === '2' ? '(86) 3333-4444' : '(86) 99999-1111', email: id === '2' ? 'contato@mgconstrutora.com.br' : 'joao.batista@email.com',
-      processos: [{ id: 1, numero_processo: '0001234-56.2026.8.18.0001', titulo: 'Ação Indenizatória', vara: '2ª Vara Cível de Teresina', tipo_acao: 'Indenização', status: 'Ativo' }],
-      documentos: [{ id: 1, titulo: 'Contrato Social.pdf', extensao: 'pdf', tamanho_kb: 1450, url: '#' }]
-    };
-    setCliente(mockData); setLoading(false);
+    try {
+      setLoading(true);
+      // O Laravel vai devolver o cliente + processos + documentos (graças ao método show do ClienteController)
+      const response = await api.get(`/clientes/${id}`);
+      setCliente(response.data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao carregar os dados do cliente.");
+      navigate('/clientes'); // Volta para a lista se o cliente não existir
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { carregarCliente(); }, [id]);
 
-  async function gerarResumoIA(processoId, dadosProcesso) {
-    setLoadingIA(prev => ({ ...prev, [processoId]: true }));
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setResumosIA(prev => ({ ...prev, [processoId]: `Com base na análise, o processo ${dadosProcesso.numero} trata-se de uma ação de ${dadosProcesso.tipo} na ${dadosProcesso.vara}. Probabilidade de êxito: Alta.` }));
-    toast.success("Resumo gerado!");
-    setLoadingIA(prev => ({ ...prev, [processoId]: false }));
-  }
-
+  // 👇 2. Busca Real no DataJud/CNJ (Rota que temos no api.php) 👇
   async function buscarProcessoCNJ() {
-    setBuscandoCnj(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setNovoProcesso(prev => ({ ...prev, tipo_acao: 'Ação Cível', vara: '1ª Vara Cível' }));
-    toast.success("Dados encontrados!");
-    setBuscandoCnj(false);
+    if (!novoProcesso.numero_processo) return toast.error("Digite o NPU do processo.");
+    
+    // Remove as pontuações do NPU para a busca
+    const npuLimpo = novoProcesso.numero_processo.replace(/\D/g, '');
+    if (npuLimpo.length !== 20) return toast.error("O NPU deve ter 20 dígitos.");
+
+    try {
+      setBuscandoCnj(true);
+      const response = await api.get(`/processos/cnj/${npuLimpo}`);
+      
+      // Supondo que a nossa API devolve 'classe' e 'orgao'
+      setNovoProcesso(prev => ({ 
+        ...prev, 
+        tipo_acao: response.data.classe || 'Ação Cível', 
+        vara: response.data.orgao || 'Vara não identificada' 
+      }));
+      toast.success("Dados encontrados!");
+    } catch (error) {
+      toast.error("Não foi possível buscar no CNJ automaticamente.");
+    } finally {
+      setBuscandoCnj(false);
+    }
   }
 
+  // 👇 3. Salvar Processo Real 👇
   async function handleSalvarProcesso(e) {
     e.preventDefault();
-    await new Promise(resolve => setTimeout(resolve, 600));
-    setCliente(prev => ({ ...prev, processos: [...prev.processos, { ...novoProcesso, id: Date.now() }] }));
-    toast.success("Processo vinculado!");
-    setIsProcessoModalOpen(false);
-    setNovoProcesso({ titulo: '', numero_processo: '', tipo_acao: '', vara: '', status: 'Ativo' });
+    try {
+      // Passamos o cliente_id junto com os dados do processo
+      await api.post('/processos', { ...novoProcesso, cliente_id: id });
+      
+      toast.success("Processo vinculado com sucesso!");
+      setIsProcessoModalOpen(false);
+      setNovoProcesso({ titulo: '', numero_processo: '', tipo_acao: '', vara: '', status: 'Ativo' });
+      carregarCliente(); // Recarrega a ficha para mostrar o novo processo
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao vincular o processo.");
+    }
   }
 
+  // 👇 4. Excluir Processo Real 👇
   async function handleExcluirProcesso(processoId) {
-    if (!window.confirm("Desvincular processo?")) return;
-    setCliente(prev => ({ ...prev, processos: prev.processos.filter(p => p.id !== processoId) }));
-    toast.success("Processo excluído!");
+    if (!window.confirm("Tem a certeza que deseja desvincular este processo?")) return;
+    try {
+      await api.delete(`/processos/${processoId}`);
+      toast.success("Processo excluído!");
+      carregarCliente(); // Atualiza a lista
+    } catch (error) {
+      toast.error("Erro ao excluir o processo.");
+    }
   }
 
+  // 👇 5. Upload Real de Documentos para o Cofre 👇
   async function handleUploadDocumento(e) {
     const file = e.target.files[0];
     if (!file) return;
-    const toastId = toast.loading("Enviando documento...");
-    await new Promise(resolve => setTimeout(resolve, 1500)); 
-    setCliente(prev => ({ ...prev, documentos: [...prev.documentos, { id: Date.now(), titulo: file.name, extensao: file.name.split('.').pop() || 'pdf', tamanho_kb: Math.round(file.size / 1024), url: '#' }] }));
-    toast.success("Documento salvo!", { id: toastId });
+
+    const toastId = toast.loading("Enviando documento para o cofre seguro...");
+    
+    // Para enviar arquivos no React, precisamos de um FormData
+    const formData = new FormData();
+    formData.append('arquivo', file);
+    formData.append('titulo', file.name);
+    formData.append('cliente_id', id);
+
+    try {
+      await api.post('/documentos', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      toast.success("Documento guardado com sucesso!", { id: toastId });
+      carregarCliente(); // Atualiza a lista de documentos
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao enviar o documento.", { id: toastId });
+    }
   }
 
+  // 👇 6. Excluir Documento Real 👇
   async function handleExcluirDocumento(docId) {
-    if (!window.confirm("Excluir documento?")) return;
-    setCliente(prev => ({ ...prev, documentos: prev.documentos.filter(d => d.id !== docId) }));
-    toast.success("Documento excluído!");
+    if (!window.confirm("Tem a certeza que deseja excluir permanentemente este documento?")) return;
+    try {
+      await api.delete(`/documentos/${docId}`);
+      toast.success("Documento excluído!");
+      carregarCliente();
+    } catch (error) {
+      toast.error("Erro ao excluir documento.");
+    }
   }
 
-  if (loading) return <div className="flex justify-center items-center h-full text-slate-500 dark:text-slate-400 transition-colors">A carregar ficha...</div>;
+  if (loading) return (
+    <div className="flex flex-col justify-center items-center h-full text-slate-500 gap-4 mt-20">
+      <Loader2 size={32} className="animate-spin text-indigo-500" />
+      <p>A carregar ficha do cliente...</p>
+    </div>
+  );
+  
   if (!cliente) return null;
 
   return (
@@ -96,7 +153,6 @@ export default function ClienteDetalhes() {
         {/* COLUNA ESQUERDA: DADOS PESSOAIS */}
         <div className="lg:col-span-1">
           <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden transition-colors duration-300">
-            {/* Detalhe de fundo decorativo */}
             <div className="absolute top-0 right-0 w-24 h-24 bg-sky-50 dark:bg-sky-900/10 rounded-bl-full -z-10 transition-colors"></div>
             
             <div className="flex items-center justify-between mb-6">
@@ -107,7 +163,6 @@ export default function ClienteDetalhes() {
                   <p className="text-xs text-slate-500 dark:text-slate-400 transition-colors">Contato principal</p>
                 </div>
               </div>
-              <Link to="/clientes" className="p-2 text-slate-400 dark:text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-50 dark:hover:bg-slate-800 rounded-xl transition-colors active:scale-95"><Edit size={18} /></Link>
             </div>
             
             <div className="space-y-4">
@@ -122,6 +177,12 @@ export default function ClienteDetalhes() {
               <div>
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1 transition-colors"><Mail size={12}/> E-mail</label>
                 <p className="font-medium text-slate-800 dark:text-slate-200 text-sm sm:text-base truncate transition-colors" title={cliente.email}>{cliente.email || '-'}</p>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1 transition-colors">Endereço</label>
+                <p className="font-medium text-slate-800 dark:text-slate-200 text-sm sm:text-base truncate transition-colors">
+                  {cliente.endereco ? `${cliente.endereco}, ${cliente.cidade}` : '-'}
+                </p>
               </div>
             </div>
           </div>
@@ -155,27 +216,13 @@ export default function ClienteDetalhes() {
                         <span className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-200 break-all transition-colors">{proc.numero_processo}</span>
                       </div>
                       <div className="flex items-center gap-2 w-full xs:w-auto justify-between xs:justify-end">
-                        <div className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 flex gap-1 transition-opacity">
-                          <button className="p-2 text-slate-400 dark:text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-100 dark:hover:bg-slate-700 rounded-lg transition-colors active:scale-95"><Edit size={16} /></button>
+                        <div className="flex gap-1">
                           <button onClick={() => handleExcluirProcesso(proc.id)} className="p-2 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-slate-700 rounded-lg transition-colors active:scale-95"><Trash2 size={16} /></button>
                         </div>
-                        {/* Botão de IA */}
-                        <button onClick={() => gerarResumoIA(proc.id, { numero: proc.numero_processo, tipo: proc.tipo_acao, vara: proc.vara })} disabled={loadingIA[proc.id]} className="flex items-center justify-center gap-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/40 px-4 py-2 rounded-full hover:bg-indigo-200 dark:hover:bg-indigo-900/60 disabled:opacity-50 transition-colors active:scale-95 flex-1 xs:flex-none">
-                          {loadingIA[proc.id] ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                          {resumosIA[proc.id] ? 'Atualizar' : 'Resumir IA'}
-                        </button>
                       </div>
                     </div>
                     <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 font-medium transition-colors">{proc.titulo || proc.tipo_acao}</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 transition-colors">{proc.vara}</p>
-                    
-                    {/* CAIXA DO RESUMO DA IA */}
-                    {resumosIA[proc.id] && (
-                      <div className="mt-4 p-4 bg-white dark:bg-slate-900/50 border-l-4 border-indigo-500 rounded-r-2xl shadow-sm animate-in fade-in duration-300 transition-colors">
-                        <div className="flex items-center gap-2 mb-2 text-indigo-600 dark:text-indigo-400 transition-colors"><Sparkles size={16} /><span className="text-xs font-bold uppercase">Resumo Inteligente</span></div>
-                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed italic transition-colors">"{resumosIA[proc.id]}"</p>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -212,11 +259,19 @@ export default function ClienteDetalhes() {
                       <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm shrink-0 transition-colors"><FileText size={20} className="text-rose-500 dark:text-rose-400" /></div>
                       <div className="truncate">
                         <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate transition-colors">{doc.titulo}</p>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-medium mt-0.5 transition-colors">{doc.extensao} • {doc.tamanho_kb} KB</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-medium mt-0.5 transition-colors">
+                          {doc.extensao || 'DOC'} • {doc.tamanho_kb ? `${doc.tamanho_kb} KB` : 'Tamanho n/a'}
+                        </p>
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => handleExcluirDocumento(doc.id)} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-slate-700 rounded-xl transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100 active:scale-95"><Trash2 size={18} /></button>
+                      {/* Se o Laravel devolveu uma URL, mostramos o botão de download */}
+                      {doc.url && (
+                        <a href={doc.url} target="_blank" rel="noreferrer" className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-100 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95" title="Baixar Arquivo">
+                          <FileText size={18} />
+                        </a>
+                      )}
+                      <button onClick={() => handleExcluirDocumento(doc.id)} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95" title="Excluir"><Trash2 size={18} /></button>
                     </div>
                   </div>
                 ))}
@@ -250,12 +305,12 @@ export default function ClienteDetalhes() {
               <form id="form-processo" onSubmit={handleSalvarProcesso} className="space-y-5">
                 <div>
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 block transition-colors">Título / Identificação interna</label>
-                  <input type="text" required className="w-full bg-transparent dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow" value={novoProcesso.titulo} onChange={e => setNovoProcesso({...novoProcesso, titulo: e.target.value})} />
+                  <input type="text" required className="w-full bg-transparent dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow" value={novoProcesso.titulo} onChange={e => setNovoProcesso({...novoProcesso, titulo: e.target.value})} placeholder="Ex: Divórcio Consensual" />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 block transition-colors">NPU do Processo</label>
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <input type="text" required className="w-full bg-transparent dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl p-3 font-mono text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow" value={novoProcesso.numero_processo} onChange={e => setNovoProcesso({...novoProcesso, numero_processo: e.target.value})} />
+                    <input type="text" required className="w-full bg-transparent dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl p-3 font-mono text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow" value={novoProcesso.numero_processo} onChange={e => setNovoProcesso({...novoProcesso, numero_processo: e.target.value})} placeholder="0000000-00.0000.0.00.0000" />
                     
                     <button type="button" onClick={buscarProcessoCNJ} disabled={buscandoCnj} className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-800 px-5 py-3 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/50 flex justify-center items-center gap-2 transition-colors active:scale-95">
                       {buscandoCnj ? <Loader2 size={18} className="animate-spin" /> : <><Search size={18} /> Buscar</>}
@@ -263,7 +318,6 @@ export default function ClienteDetalhes() {
                   </div>
                 </div>
                 
-                {/* Caixa de Dados Oficiais Destacada */}
                 <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 relative mt-6 transition-colors">
                   <span className="absolute -top-3 left-4 bg-slate-50 dark:bg-slate-900 px-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase transition-colors">Dados Oficiais</span>
                   <div className="space-y-4">
@@ -280,7 +334,6 @@ export default function ClienteDetalhes() {
               </form>
             </div>
             
-            {/* Rodapé da Gaveta */}
             <div className="p-5 sm:p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-end gap-3 shrink-0 transition-colors">
               <button type="button" onClick={() => setIsProcessoModalOpen(false)} className="px-5 py-2.5 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl transition-colors active:scale-95">Cancelar</button>
               <button type="submit" form="form-processo" className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-indigo-700 dark:hover:bg-indigo-500 transition-colors shadow-md active:scale-95">Salvar Processo</button>

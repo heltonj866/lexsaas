@@ -8,11 +8,12 @@ export function Sidebar({ isOpen, setIsOpen }) {
   const location = useLocation();
   const navigate = useNavigate();
   
+  // 👇 Menu Inteligente: O Financeiro só entra na lista se o usuário for Admin 👇
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: Home },
     { name: 'Clientes', path: '/clientes', icon: Users },
     { name: 'Processos', path: '/processos', icon: Briefcase },
-    { name: 'Financeiro', path: '/financeiro', icon: DollarSign },
+    ...(user?.role === 'admin' ? [{ name: 'Financeiro', path: '/financeiro', icon: DollarSign }] : []),
     { name: 'Tarefas', path: '/tarefas', icon: CheckSquare },
     { name: 'Documentos', path: '/documentos', icon: FileText },
   ];
@@ -24,7 +25,6 @@ export function Sidebar({ isOpen, setIsOpen }) {
 
   return (
     <aside 
-      // 👇 ALTERAÇÃO: bg-white para o claro e dark:bg-slate-900 para o escuro
       className={`fixed inset-y-0 left-0 z-50 bg-white dark:bg-slate-900 text-slate-900 dark:text-white flex flex-col border-r border-slate-200 dark:border-slate-800 transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] md:relative shrink-0 ${
         isOpen ? 'w-64 translate-x-0 shadow-2xl dark:shadow-none' : 'w-64 -translate-x-full md:w-20 md:translate-x-0'
       }`}
@@ -40,10 +40,7 @@ export function Sidebar({ isOpen, setIsOpen }) {
           </h1>
         </div>
         
-        <button 
-          onClick={() => setIsOpen(false)} 
-          className="md:hidden p-2 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-800 transition-colors active:scale-95 shrink-0"
-        >
+        <button onClick={() => setIsOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-800 transition-colors active:scale-95 shrink-0">
           <X size={20} />
         </button>
       </div>
@@ -65,13 +62,8 @@ export function Sidebar({ isOpen, setIsOpen }) {
                   : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-indigo-600 dark:hover:text-white font-medium'
               } ${isOpen ? 'justify-start' : 'justify-center'}`}
             >
-              {isActive && isOpen && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full"></div>
-              )}
-              
-              <div className={`shrink-0 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
-                <Icon size={22} />
-              </div>
+              {isActive && isOpen && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full"></div>}
+              <div className={`shrink-0 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}><Icon size={22} /></div>
               <span className={`tracking-wide text-sm whitespace-nowrap transition-all duration-300 overflow-hidden ${isOpen ? 'opacity-100 ml-3 w-auto' : 'opacity-0 ml-0 w-0'}`}>
                 {item.name}
               </span>
@@ -90,30 +82,18 @@ export function Sidebar({ isOpen, setIsOpen }) {
           } ${isOpen ? 'justify-start gap-3' : 'justify-center'}`}
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500 font-bold text-white uppercase shadow-md overflow-hidden">
-            {user?.avatar ? (
-              <img src={`${(import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/api\/?$/, '')}/storage/${user.avatar}`} alt="Avatar" className="h-full w-full object-cover" />
-            ) : (
-              user?.name?.charAt(0) || 'U'
-            )}
+            {user?.avatar ? <img src={`${(import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/api\/?$/, '')}/storage/${user.avatar}`} alt="Avatar" className="h-full w-full object-cover" /> : (user?.name?.charAt(0) || 'U')}
           </div>
-          
           <div className={`flex-1 transition-all duration-300 overflow-hidden whitespace-nowrap ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
             <p className="truncate text-sm font-bold text-slate-800 dark:text-slate-200">{user?.name || 'Usuário'}</p>
-            <p className="truncate text-[10px] uppercase font-semibold text-slate-400">Configurações</p>
+            <p className="truncate text-[10px] uppercase font-semibold text-slate-400">{user?.role || 'Acesso'}</p>
           </div>
           {isOpen && <Settings size={16} className="text-slate-400 group-hover:rotate-90 transition-transform shrink-0" />}
         </Link>
         
-        <button 
-          onClick={handleLogout} 
-          className={`flex w-full items-center text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 rounded-xl transition-all duration-300 font-medium group active:scale-95 text-sm
-            ${isOpen ? 'px-4 py-3 gap-3 justify-start' : 'p-3 justify-center'}
-          `}
-        >
+        <button onClick={handleLogout} className={`flex w-full items-center text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 rounded-xl transition-all duration-300 font-medium group active:scale-95 text-sm ${isOpen ? 'px-4 py-3 gap-3 justify-start' : 'p-3 justify-center'}`}>
           <LogOut size={20} className="shrink-0 group-hover:-translate-x-1 transition-transform" />
-          <span className={`whitespace-nowrap transition-all duration-300 overflow-hidden ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
-            Sair do Sistema
-          </span>
+          <span className={`whitespace-nowrap transition-all duration-300 overflow-hidden ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>Sair do Sistema</span>
         </button>
       </div>
     </aside>
