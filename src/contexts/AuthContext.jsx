@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
 
   const signIn = async (email, password) => {
     // 1. Chamada à raiz (ignora o baseURL do api.js) para buscar o cookie
-    await axios.get(`${backendBaseURL}/sanctum/csrf-cookie`, { withCredentials: true });
+    await api.get('/sanctum/csrf-cookie');
     
     // 2. Chamada normal à API de login (o api.js já adiciona o /api)
     const response = await api.post('/login', { email, password });
@@ -59,7 +59,7 @@ export function AuthProvider({ children }) {
   };
 
   const signUp = async (dados) => {
-    await axios.get(`${backendBaseURL}/sanctum/csrf-cookie`, { withCredentials: true });
+    await api.get('/sanctum/csrf-cookie');
     
     const response = await api.post('/register', dados);
     const { user, access_token } = response.data;
