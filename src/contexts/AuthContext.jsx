@@ -61,9 +61,12 @@ export function AuthProvider({ children }) {
   };
 
   const signUp = async (dados) => {
-    await api.get('/sanctum/csrf-cookie');
-    
-    const response = await api.post('/register', dados);
+  // Chamada correta pela raiz do site, igual ao Login
+  await axios.get('https://legaltech.neotek.com.br/sanctum/csrf-cookie', {
+    withCredentials: true
+  });
+  
+  const response = await api.post('/register', dados);
     const { user, access_token } = response.data;
     
     localStorage.setItem('@LegalTech:user', JSON.stringify(user));
