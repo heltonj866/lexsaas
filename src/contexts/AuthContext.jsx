@@ -41,18 +41,13 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signIn = async (email, password) => {
-    // 1. Chamada à raiz (ignora o baseURL do api.js) para buscar o cookie
-    await axios.get('https://legaltech.neotek.com.br/sanctum/csrf-cookie', {
-    withCredentials: true
-    });
+    // 👇 Removemos completamente o axios.get('/sanctum/csrf-cookie') daqui!
     
-    // 2. Chamada normal à API de login (o api.js já adiciona o /api)
+    // Vamos direto para a rota de login da sua API
     const response = await api.post('/login', { email, password });
     
-    // O seu Laravel envia 'access_token' e 'user'
     const { user, access_token } = response.data;
     
-    // Grava de acordo com o que o seu api.js procura
     localStorage.setItem('@LegalTech:user', JSON.stringify(user));
     localStorage.setItem('@LegalTech:token', access_token);
     
@@ -61,10 +56,6 @@ export function AuthProvider({ children }) {
   };
 
   const signUp = async (dados) => {
-  // Chamada correta pela raiz do site, igual ao Login
-  await axios.get('https://legaltech.neotek.com.br/sanctum/csrf-cookie', {
-    withCredentials: true
-  });
   
   const response = await api.post('/register', dados);
     const { user, access_token } = response.data;
