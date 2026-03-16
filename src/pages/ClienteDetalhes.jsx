@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Phone, Mail, Briefcase, FileText, Plus, Search, X, Edit, Trash2, Upload, Loader2 } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, Briefcase, FileText, Plus, Search, X, Edit, Trash2, Upload, Loader2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '../services/api'; // Ajuste o caminho se necessário (ex: '../services/api')
+import api from '../services/api';
 
 export default function ClienteDetalhes() {
   const { id } = useParams();
@@ -14,17 +14,19 @@ export default function ClienteDetalhes() {
   const [buscandoCnj, setBuscandoCnj] = useState(false);
   const [novoProcesso, setNovoProcesso] = useState({ titulo: '', numero_processo: '', tipo_acao: '', vara: '', status: 'Ativo' });
 
-  // 👇 1. Busca Real do Cliente com Processos e Documentos 👇
+  // 👇 NOVOS: Estados para as Modais de Exclusão 👇
+  const [processoParaExcluir, setProcessoParaExcluir] = useState(null);
+  const [documentoParaExcluir, setDocumentoParaExcluir] = useState(null);
+
   async function carregarCliente() {
     try {
       setLoading(true);
-      // O Laravel vai devolver o cliente + processos + documentos (graças ao método show do ClienteController)
       const response = await api.get(`/clientes/${id}`);
       setCliente(response.data);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar os dados do cliente.");
-      navigate('/clientes'); // Volta para a lista se o cliente não existir
+      navigate('/clientes'); 
     } finally {
       setLoading(false);
     }
@@ -32,11 +34,9 @@ export default function ClienteDetalhes() {
 
   useEffect(() => { carregarCliente(); }, [id]);
 
-  // 👇 2. Busca Real no DataJud/CNJ (Rota que temos no api.php) 👇
   async function buscarProcessoCNJ() {
     if (!novoProcesso.numero_processo) return toast.error("Digite o NPU do processo.");
     
-    // Remove as pontuações do NPU para a busca
     const npuLimpo = novoProcesso.numero_processo.replace(/\D/g, '');
     if (npuLimpo.length !== 20) return toast.error("O NPU deve ter 20 dígitos.");
 
@@ -44,7 +44,6 @@ export default function ClienteDetalhes() {
       setBuscandoCnj(true);
       const response = await api.get(`/processos/cnj/${npuLimpo}`);
       
-      // Supondo que a nossa API devolve 'classe' e 'orgao'
       setNovoProcesso(prev => ({ 
         ...prev, 
         tipo_acao: response.data.classe || 'Ação Cível', 
@@ -58,43 +57,40 @@ export default function ClienteDetalhes() {
     }
   }
 
-  // 👇 3. Salvar Processo Real 👇
   async function handleSalvarProcesso(e) {
     e.preventDefault();
     try {
-      // Passamos o cliente_id junto com os dados do processo
       await api.post('/processos', { ...novoProcesso, cliente_id: id });
       
       toast.success("Processo vinculado com sucesso!");
       setIsProcessoModalOpen(false);
       setNovoProcesso({ titulo: '', numero_processo: '', tipo_acao: '', vara: '', status: 'Ativo' });
-      carregarCliente(); // Recarrega a ficha para mostrar o novo processo
+      carregarCliente(); 
     } catch (error) {
       console.error(error);
       toast.error("Erro ao vincular o processo.");
     }
   }
 
-  // 👇 4. Excluir Processo Real 👇
-  async function handleExcluirProcesso(processoId) {
-    if (!window.confirm("Tem a certeza que deseja desvincular este processo?")) return;
+  // 👇 NOVA FUNÇÃO: Confirmar exclusão do Processo 👇
+  async function confirmarExclusaoProcesso() {
+    if (!processoParaExcluir) return;
     try {
-      await api.delete(`/processos/${processoId}`);
-      toast.success("Processo excluído!");
-      carregarCliente(); // Atualiza a lista
+      await api.delete(`/processos/${processoParaExcluir.id}`);
+      toast.success("Processo desvinculado e excluído!");
+      setProcessoParaExcluir(null);
+      carregarCliente(); 
     } catch (error) {
       toast.error("Erro ao excluir o processo.");
     }
   }
 
-  // 👇 5. Upload Real de Documentos para o Cofre 👇
   async function handleUploadDocumento(e) {
     const file = e.target.files[0];
     if (!file) return;
 
     const toastId = toast.loading("Enviando documento para o cofre seguro...");
     
-    // Para enviar arquivos no React, precisamos de um FormData
     const formData = new FormData();
     formData.append('arquivo', file);
     formData.append('titulo', file.name);
@@ -106,19 +102,20 @@ export default function ClienteDetalhes() {
       });
       
       toast.success("Documento guardado com sucesso!", { id: toastId });
-      carregarCliente(); // Atualiza a lista de documentos
+      carregarCliente(); 
     } catch (error) {
       console.error(error);
       toast.error("Erro ao enviar o documento.", { id: toastId });
     }
   }
 
-  // 👇 6. Excluir Documento Real 👇
-  async function handleExcluirDocumento(docId) {
-    if (!window.confirm("Tem a certeza que deseja excluir permanentemente este documento?")) return;
+  // 👇 NOVA FUNÇÃO: Confirmar exclusão do Documento 👇
+  async function confirmarExclusaoDocumento() {
+    if (!documentoParaExcluir) return;
     try {
-      await api.delete(`/documentos/${docId}`);
-      toast.success("Documento excluído!");
+      await api.delete(`/documentos/${documentoParaExcluir.id}`);
+      toast.success("Documento excluído do cofre!");
+      setDocumentoParaExcluir(null);
       carregarCliente();
     } catch (error) {
       toast.error("Erro ao excluir documento.");
@@ -217,7 +214,10 @@ export default function ClienteDetalhes() {
                       </div>
                       <div className="flex items-center gap-2 w-full xs:w-auto justify-between xs:justify-end">
                         <div className="flex gap-1">
-                          <button onClick={() => handleExcluirProcesso(proc.id)} className="p-2 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-slate-700 rounded-lg transition-colors active:scale-95"><Trash2 size={16} /></button>
+                          {/* 👇 Botão de exclusão do Processo agora abre a Modal 👇 */}
+                          <button onClick={() => setProcessoParaExcluir(proc)} className="p-2 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-slate-700 rounded-lg transition-colors active:scale-95 tooltip" title="Desvincular e Excluir">
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -265,13 +265,15 @@ export default function ClienteDetalhes() {
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      {/* Se o Laravel devolveu uma URL, mostramos o botão de download */}
                       {doc.url && (
                         <a href={doc.url} target="_blank" rel="noreferrer" className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-100 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95" title="Baixar Arquivo">
                           <FileText size={18} />
                         </a>
                       )}
-                      <button onClick={() => handleExcluirDocumento(doc.id)} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95" title="Excluir"><Trash2 size={18} /></button>
+                      {/* 👇 Botão de exclusão do Documento agora abre a Modal 👇 */}
+                      <button onClick={() => setDocumentoParaExcluir(doc)} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-slate-700 rounded-xl transition-colors active:scale-95" title="Excluir Documento">
+                        <Trash2 size={18} />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -341,6 +343,55 @@ export default function ClienteDetalhes() {
           </div>
         </div>
       )}
+
+      {/* 👇 MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE PROCESSO 👇 */}
+      {processoParaExcluir && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setProcessoParaExcluir(null)}></div>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full relative shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-6">
+              <AlertTriangle size={32} className="text-red-600 dark:text-red-500" />
+            </div>
+            <h3 className="text-xl font-bold text-center text-slate-800 dark:text-slate-100 mb-2">Desvincular Processo?</h3>
+            <p className="text-center text-slate-500 dark:text-slate-400 text-sm mb-8">
+              Tem a certeza que deseja desvincular o processo <span className="font-bold text-slate-700 dark:text-slate-300">{processoParaExcluir.numero_processo}</span> deste cliente?
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setProcessoParaExcluir(null)} className="flex-1 px-5 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">
+                Cancelar
+              </button>
+              <button type="button" onClick={confirmarExclusaoProcesso} className="flex-1 px-5 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-md active:scale-95">
+                Sim, Desvincular
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 👇 MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE DOCUMENTO 👇 */}
+      {documentoParaExcluir && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setDocumentoParaExcluir(null)}></div>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full relative shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-6">
+              <AlertTriangle size={32} className="text-red-600 dark:text-red-500" />
+            </div>
+            <h3 className="text-xl font-bold text-center text-slate-800 dark:text-slate-100 mb-2">Excluir Documento?</h3>
+            <p className="text-center text-slate-500 dark:text-slate-400 text-sm mb-8">
+              Tem a certeza que deseja excluir permanentemente o documento <span className="font-bold text-slate-700 dark:text-slate-300">{documentoParaExcluir.titulo}</span>?
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setDocumentoParaExcluir(null)} className="flex-1 px-5 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">
+                Cancelar
+              </button>
+              <button type="button" onClick={confirmarExclusaoDocumento} className="flex-1 px-5 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-md active:scale-95">
+                Sim, Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

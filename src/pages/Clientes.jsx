@@ -187,7 +187,7 @@ export default function Clientes() {
         </div>
       </div>
 
-      {/* GAVETA LATERAL PREMIUM (Resolvido o Clipping) */}
+      {/* GAVETA LATERAL PREMIUM */}
       {isDrawerOpen && (
         <div className="fixed inset-0 z-[100] flex justify-end">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={fecharGaveta}></div>
@@ -201,7 +201,6 @@ export default function Clientes() {
               <button onClick={fecharGaveta} className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-slate-600 rounded-full active:scale-95"><X size={20} /></button>
             </div>
 
-            {/* ADICIONADO: p-2 interno extra e pb-10 para não esmagar no fundo */}
             <div className="p-5 sm:p-6 overflow-y-auto flex-1 custom-scrollbar">
               <form id="form-cliente" onSubmit={handleSalvarCliente} className="space-y-5 pb-8 px-1">
                 <div>
@@ -256,7 +255,30 @@ export default function Clientes() {
           </div>
         </div>
       )}
-      {/* ... Modal de Exclusão permanece igual ... */}
+
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      {clienteParaExcluir && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setClienteParaExcluir(null)}></div>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full relative shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-6">
+              <AlertTriangle size={32} className="text-red-600 dark:text-red-500" />
+            </div>
+            <h3 className="text-xl font-bold text-center text-slate-800 dark:text-slate-100 mb-2">Excluir Cliente?</h3>
+            <p className="text-center text-slate-500 dark:text-slate-400 text-sm mb-8">
+              Tem a certeza que deseja excluir o cliente <span className="font-bold text-slate-700 dark:text-slate-300">{clienteParaExcluir.nome}</span>? Esta ação não pode ser desfeita e removerá todos os vínculos.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setClienteParaExcluir(null)} className="flex-1 px-5 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">
+                Cancelar
+              </button>
+              <button onClick={confirmarExclusao} className="flex-1 px-5 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-md active:scale-95">
+                Sim, Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

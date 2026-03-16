@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
   User, Building2, ShieldCheck, Palette, Globe, 
-  Save, Moon, Sun, Key, Loader2, Users, PlusCircle, Trash2 
+  Save, Moon, Sun, Key, Loader2, Users, PlusCircle, Trash2, AlertTriangle 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -10,7 +10,7 @@ export default function Configuracoes() {
   const [abaAtiva, setAbaAtiva] = useState('perfil');
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(document.documentElement.classList.contains('dark'));
-  const [userRole, setUserRole] = useState('admin'); // Perfil por padrão
+  const [userRole, setUserRole] = useState('admin'); 
 
   // Estados dos formulários
   const [perfil, setPerfil] = useState({ nome: '', email: '', oab: '', telefone: '' });
@@ -22,6 +22,9 @@ export default function Configuracoes() {
   const [equipe, setEquipe] = useState([]);
   const [novoMembro, setNovoMembro] = useState({ name: '', email: '', password: '', role: 'advogado' });
   const [loadingMembro, setLoadingMembro] = useState(false);
+  
+  // 👇 NOVO: Estado para controlar a modal de exclusão da equipa 👇
+  const [membroParaExcluir, setMembroParaExcluir] = useState(null);
 
   const labelEstilo = "text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 block transition-colors";
   const inputEstilo = "w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-sm text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm";
@@ -56,12 +59,23 @@ export default function Configuracoes() {
     e.preventDefault();
     if (senhas.nova && senhas.nova !== senhas.confirmar) return toast.error("As senhas não coincidem!");
     setLoading(true);
+    
     try {
-      await api.put('/configuracoes', { perfil, escritorio, sistema, senhas });
-      toast.success("Configurações atualizadas!");
-      setSenhas({ atual: '', nova: '', confirmar: '' }); 
-    } catch (error) { toast.error("Erro ao guardar alterações."); } 
-    finally { setLoading(false); }
+      if (abaAtiva === 'perfil' || abaAtiva === 'seguranca') {
+          const payload = { name: perfil.nome, telefone: perfil.telefone, oab: perfil.oab };
+          if (senhas.nova) payload.password = senhas.nova;
+          await api.put('/profile', payload);
+          toast.success("Perfil atualizado com sucesso!");
+          setSenhas({ atual: '', nova: '', confirmar: '' }); 
+      } else {
+          await api.put('/configuracoes', { escritorio, sistema });
+          toast.success("Configurações atualizadas!");
+      }
+    } catch (error) { 
+        toast.error("Erro ao guardar alterações."); 
+    } finally { 
+        setLoading(false); 
+    }
   }
 
   async function handleAdicionarMembro(e) {
@@ -76,16 +90,19 @@ export default function Configuracoes() {
     finally { setLoadingMembro(false); }
   }
 
-  async function removerMembro(id) {
-    if (!window.confirm("Remover permanentemente este acesso?")) return;
+  // 👇 NOVA FUNÇÃO: Substitui o window.confirm pelo fluxo da Modal 👇
+  async function confirmarExclusaoMembro() {
+    if (!membroParaExcluir) return;
     try {
-      await api.delete(`/configuracoes/equipe/${id}`);
-      toast.success("Membro removido.");
-      carregarConfiguracoes();
-    } catch (error) { toast.error(error.response?.data?.error || "Erro ao remover."); }
+      await api.delete(`/configuracoes/equipe/${membroParaExcluir.id}`);
+      toast.success("Membro removido da equipa.");
+      setMembroParaExcluir(null); // Fecha a modal
+      carregarConfiguracoes(); // Recarrega a lista
+    } catch (error) { 
+      toast.error(error.response?.data?.error || "Erro ao remover membro."); 
+    }
   }
 
-  // 👇 Menu Dinâmico Baseado no Perfil 👇
   const baseMenuItems = [
     { id: 'perfil', label: 'Meu Perfil', icon: User },
     { id: 'aparencia', label: 'Aparência', icon: Palette },
@@ -101,7 +118,7 @@ export default function Configuracoes() {
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="animate-spin text-indigo-500" size={32} /></div>;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-6rem)] animate-in fade-in duration-500">
+    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-6rem)] animate-in fade-in duration-500 relative">
       
       <aside className="w-full lg:w-64 shrink-0">
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-3 shadow-sm">
@@ -120,7 +137,6 @@ export default function Configuracoes() {
 
       <main className="flex-1 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden">
         
-        {/* Formulário Geral (Apenas para abas que não são a Equipa) */}
         {abaAtiva !== 'equipe' ? (
           <form onSubmit={handleSalvar} className="flex flex-col h-full">
             <div className="p-6 sm:p-10 flex-1 overflow-y-auto custom-scrollbar">
@@ -195,7 +211,6 @@ export default function Configuracoes() {
 
         ) : (
 
-          /* ABA DE EQUIPA (Isolada do formulário principal para não disparar enter) */
           <div className="flex flex-col h-full">
             <div className="p-6 sm:p-10 flex-1 overflow-y-auto custom-scrollbar animate-in slide-in-from-right-4">
               <div className="border-b border-slate-100 dark:border-slate-800 pb-5 flex justify-between items-end mb-6">
@@ -205,7 +220,6 @@ export default function Configuracoes() {
                 </div>
               </div>
 
-              {/* Formulário de Convite */}
               <form onSubmit={handleAdicionarMembro} className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 mb-8">
                 <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-4"><PlusCircle size={18} className="text-sky-500"/> Adicionar Novo Membro</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -228,7 +242,6 @@ export default function Configuracoes() {
                 </div>
               </form>
 
-              {/* Lista de Membros */}
               <div className="space-y-3">
                 <label className={labelEstilo}>Membros Atuais ({equipe.length})</label>
                 {equipe.map(membro => (
@@ -244,7 +257,8 @@ export default function Configuracoes() {
                       <span className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase ${membro.role === 'admin' ? 'bg-rose-100 text-rose-700' : membro.role === 'advogado' ? 'bg-sky-100 text-sky-700' : 'bg-slate-200 text-slate-700'}`}>
                         {membro.role}
                       </span>
-                      <button onClick={() => removerMembro(membro.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors active:scale-95 tooltip" title="Remover Acesso">
+                      {/* 👇 NOVO: Em vez de window.confirm, abrimos a modal 👇 */}
+                      <button onClick={() => setMembroParaExcluir(membro)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors active:scale-95 tooltip" title="Remover Acesso">
                         <Trash2 size={18} />
                       </button>
                     </div>
@@ -256,6 +270,31 @@ export default function Configuracoes() {
           </div>
         )}
       </main>
+
+      {/* 👇 MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE EQUIPA 👇 */}
+      {membroParaExcluir && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setMembroParaExcluir(null)}></div>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full relative shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-6">
+              <AlertTriangle size={32} className="text-red-600 dark:text-red-500" />
+            </div>
+            <h3 className="text-xl font-bold text-center text-slate-800 dark:text-slate-100 mb-2">Remover Acesso?</h3>
+            <p className="text-center text-slate-500 dark:text-slate-400 text-sm mb-8">
+              Tem certeza que deseja remover permanentemente o acesso de <span className="font-bold text-slate-700 dark:text-slate-300">{membroParaExcluir.name}</span>? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setMembroParaExcluir(null)} className="flex-1 px-5 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">
+                Cancelar
+              </button>
+              <button type="button" onClick={confirmarExclusaoMembro} className="flex-1 px-5 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-md active:scale-95">
+                Sim, Remover
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

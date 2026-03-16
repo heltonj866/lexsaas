@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, DollarSign, TrendingUp, TrendingDown, Wallet, Users, Briefcase, Loader2, Trash2 } from 'lucide-react';
+import { Plus, Edit, DollarSign, TrendingUp, TrendingDown, Wallet, Users, Briefcase, Loader2, Trash2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 
@@ -11,6 +11,9 @@ export default function Financeiro() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [idEmEdicao, setIdEmEdicao] = useState(null);
+
+  // 👇 NOVO: Estado para controlar a modal de exclusão 👇
+  const [lancamentoParaExcluir, setLancamentoParaExcluir] = useState(null);
 
   const [form, setForm] = useState({
     descricao: '', valor: '', tipo: 'receita', categoria: 'honorarios', data_vencimento: '', status: 'pendente', processo_id: '', cliente_id: ''
@@ -56,9 +59,17 @@ export default function Financeiro() {
     } catch (error) { toast.error("Erro ao salvar."); }
   }
 
-  async function handleExcluir(id) {
-    if (!window.confirm("Excluir lançamento?")) return;
-    try { await api.delete(`/financeiro/${id}`); toast.success("Excluído!"); carregarDados(); } catch (error) { toast.error("Erro ao excluir."); }
+  // 👇 NOVA FUNÇÃO: Substitui o window.confirm pelo fluxo da Modal 👇
+  async function confirmarExclusao() {
+    if (!lancamentoParaExcluir) return;
+    try { 
+        await api.delete(`/financeiro/${lancamentoParaExcluir.id}`); 
+        toast.success("Lançamento excluído com sucesso!"); 
+        setLancamentoParaExcluir(null); // Fecha a modal
+        carregarDados(); 
+    } catch (error) { 
+        toast.error("Erro ao excluir lançamento."); 
+    }
   }
 
   async function alternarStatus(lancamento) {
@@ -84,7 +95,7 @@ export default function Financeiro() {
   const formatarMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300 relative">
       {/* CABEÇALHO */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -109,7 +120,6 @@ export default function Financeiro() {
       {/* TABELA */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col transition-colors">
         <div className="overflow-x-auto custom-scrollbar">
-          {/* ... O conteúdo da tabela de lançamentos permanece idêntico ... */}
           <table className="w-full text-left text-sm whitespace-nowrap min-w-[700px]">
             <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 uppercase text-[10px] sm:text-xs font-bold tracking-wider">
               <tr><th className="px-4 sm:px-6 py-4">Descrição</th><th className="px-4 sm:px-6 py-4">Tipo</th><th className="px-4 sm:px-6 py-4">Valor</th><th className="px-4 sm:px-6 py-4">Vencimento</th><th className="px-4 sm:px-6 py-4">Status</th><th className="px-4 sm:px-6 py-4 text-right">Ações</th></tr>
@@ -122,7 +132,11 @@ export default function Financeiro() {
                   <td className={`px-4 sm:px-6 py-3 sm:py-4 font-bold ${l.tipo === 'receita' ? 'text-emerald-600' : 'text-rose-600'}`}>{l.tipo === 'despesa' && '-'} {formatarMoeda(l.valor)}</td>
                   <td className="px-4 sm:px-6 py-3 sm:py-4 text-slate-500 text-xs font-medium">{new Date(l.data_vencimento).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</td>
                   <td className="px-4 sm:px-6 py-3 sm:py-4"><button onClick={() => alternarStatus(l)} className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all active:scale-95 ${l.status === 'pago' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-amber-100 text-amber-700'}`}>{l.status}</button></td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 text-right flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => prepararEdicao(l)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg"><Edit size={18} /></button><button onClick={() => handleExcluir(l.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"><Trash2 size={18} /></button></td>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 text-right flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => prepararEdicao(l)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg"><Edit size={18} /></button>
+                    {/* 👇 Botão de exclusão agora abre a Modal 👇 */}
+                    <button onClick={() => setLancamentoParaExcluir(l)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"><Trash2 size={18} /></button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -130,7 +144,7 @@ export default function Financeiro() {
         </div>
       </div>
 
-      {/* MODAL PREMIUM (Resolvido o Clipping) */}
+      {/* MODAL DE CRIAÇÃO/EDIÇÃO (Mantida intacta) */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border dark:border-slate-800 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
@@ -139,7 +153,6 @@ export default function Financeiro() {
               <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><DollarSign className="text-indigo-600 dark:text-indigo-400"/> {idEmEdicao ? 'Editar Lançamento' : 'Novo Lançamento'}</h2>
             </div>
             
-            {/* ADICIONADO: p-5 e pb-8 interno para evitar cortes */}
             <div className="overflow-y-auto custom-scrollbar flex-1 p-5 sm:p-6">
               <form id="form-fin" onSubmit={handleSalvar} className="space-y-5 pb-4 px-1">
                 
@@ -192,6 +205,31 @@ export default function Financeiro() {
           </div>
         </div>
       )}
+
+      {/* 👇 MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE LANÇAMENTO 👇 */}
+      {lancamentoParaExcluir && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setLancamentoParaExcluir(null)}></div>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full relative shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-6">
+              <AlertTriangle size={32} className="text-red-600 dark:text-red-500" />
+            </div>
+            <h3 className="text-xl font-bold text-center text-slate-800 dark:text-slate-100 mb-2">Excluir Lançamento?</h3>
+            <p className="text-center text-slate-500 dark:text-slate-400 text-sm mb-8">
+              Tem a certeza que deseja excluir o lançamento de <span className="font-bold text-slate-700 dark:text-slate-300">{formatarMoeda(lancamentoParaExcluir.valor)}</span>? Esta ação não pode ser desfeita e irá alterar o seu fluxo de caixa.
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setLancamentoParaExcluir(null)} className="flex-1 px-5 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">
+                Cancelar
+              </button>
+              <button type="button" onClick={confirmarExclusao} className="flex-1 px-5 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-md active:scale-95">
+                Sim, Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

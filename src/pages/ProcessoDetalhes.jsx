@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
     ArrowLeft, Briefcase, Scale, Clock, FileText, 
-    User, AlertCircle, Calendar, Download, CheckCircle2, Loader2 
+    User, AlertCircle, Calendar, Download, CheckCircle2, Loader2, DollarSign
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -57,12 +57,14 @@ export default function ProcessoDetalhes() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                {/* COLUNA ESQUERDA: INFORMAÇÕES */}
+                {/* COLUNA ESQUERDA: INFORMAÇÕES PRINCIPAIS */}
                 <div className="lg:col-span-1 space-y-6">
                     <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
                         <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-5 flex items-center gap-2"><Briefcase className="text-indigo-500" size={20}/> Dados Principais</h2>
                         
                         <div className="space-y-4">
+                            
+                            {/* CLIENTE VINCULADO */}
                             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50">
                                 <span className="text-[11px] font-bold text-slate-500 uppercase block mb-1">Cliente Vinculado</span>
                                 {processo.cliente ? (
@@ -73,13 +75,27 @@ export default function ProcessoDetalhes() {
                                     <span className="text-slate-500 font-medium">Nenhum cliente associado</span>
                                 )}
                             </div>
+
+                            {/* 👇 ADICIONADO: BLOCO DE VALOR DA CAUSA 👇 */}
+                            {processo.valor && (
+                                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100 dark:border-emerald-800/50">
+                                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-500/80 uppercase flex items-center gap-1 mb-1">
+                                        <DollarSign size={14} /> Valor da Causa
+                                    </span>
+                                    <span className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
+                                        R$ {parseFloat(processo.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                                    </span>
+                                </div>
+                            )}
                             
+                            {/* OBSERVAÇÕES / RESUMO */}
                             <div>
                                 <span className="text-[11px] font-bold text-slate-500 uppercase block mb-1">Observações / Resumo</span>
                                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 text-sm text-slate-700 dark:text-slate-300 min-h-[100px] whitespace-pre-wrap">
                                     {processo.descricao || 'Nenhuma anotação registada para este processo.'}
                                 </div>
                             </div>
+
                         </div>
                     </div>
                 </div>

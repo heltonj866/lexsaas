@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, AlertCircle, Clock, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Edit, AlertCircle, Clock, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api'; 
 
@@ -9,6 +9,9 @@ export default function Tarefas() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [idEmEdicao, setIdEmEdicao] = useState(null);
+
+  // 👇 NOVO: Estado para a Modal de Exclusão de Tarefa 👇
+  const [tarefaParaExcluir, setTarefaParaExcluir] = useState(null);
 
   const [form, setForm] = useState({
     titulo: '', descricao: '', data_vencimento: '', status: 'pendente', prioridade: 'media', processo_id: ''
@@ -53,10 +56,16 @@ export default function Tarefas() {
     } catch (error) { toast.error("Erro ao guardar."); }
   }
 
-  async function excluirTarefa(id) {
-    if (window.confirm("Tem certeza que deseja apagar esta tarefa/prazo?")) {
-      try { await api.delete(`/tarefas/${id}`); toast.success("Tarefa removida!"); carregarDados(); } 
-      catch (error) { toast.error("Erro ao remover a tarefa."); }
+  // 👇 NOVA FUNÇÃO: Substitui o window.confirm pelo fluxo da Modal 👇
+  async function confirmarExclusao() {
+    if (!tarefaParaExcluir) return;
+    try { 
+      await api.delete(`/tarefas/${tarefaParaExcluir.id}`); 
+      toast.success("Tarefa removida com sucesso!"); 
+      setTarefaParaExcluir(null); // Fecha a modal
+      carregarDados(); 
+    } catch (error) { 
+      toast.error("Erro ao remover a tarefa."); 
     }
   }
 
@@ -89,7 +98,7 @@ export default function Tarefas() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 lg:h-[calc(100vh-6rem)] flex flex-col animate-in fade-in duration-300">
+    <div className="space-y-4 sm:space-y-6 lg:h-[calc(100vh-6rem)] flex flex-col animate-in fade-in duration-300 relative">
       
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shrink-0">
         <div>
@@ -119,7 +128,8 @@ export default function Tarefas() {
                       <span className={`text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-md ${prioridadeCores[tarefa.prioridade]}`}>{tarefa.prioridade}</span>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => prepararEdicao(tarefa)} className="p-1.5 text-slate-400 hover:text-sky-600 rounded"><Edit size={16} /></button>
-                        <button onClick={() => excluirTarefa(tarefa.id)} className="p-1.5 text-slate-400 hover:text-red-600 rounded"><Trash2 size={16} /></button>
+                        {/* 👇 Botão de exclusão agora abre a Modal 👇 */}
+                        <button onClick={() => setTarefaParaExcluir(tarefa)} className="p-1.5 text-slate-400 hover:text-red-600 rounded"><Trash2 size={16} /></button>
                       </div>
                     </div>
                     <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm sm:text-base mb-1.5 line-clamp-2">{tarefa.titulo}</h3>
@@ -138,7 +148,7 @@ export default function Tarefas() {
         </div>
       )}
 
-      {/* MODAL PREMIUM DE TAREFAS */}
+      {/* MODAL DE CRIAÇÃO/EDIÇÃO DE TAREFAS */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border dark:border-slate-800 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
@@ -184,6 +194,31 @@ export default function Tarefas() {
           </div>
         </div>
       )}
+
+      {/* 👇 MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE TAREFA 👇 */}
+      {tarefaParaExcluir && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setTarefaParaExcluir(null)}></div>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full relative shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-6">
+              <AlertTriangle size={32} className="text-red-600 dark:text-red-500" />
+            </div>
+            <h3 className="text-xl font-bold text-center text-slate-800 dark:text-slate-100 mb-2">Excluir Tarefa?</h3>
+            <p className="text-center text-slate-500 dark:text-slate-400 text-sm mb-8">
+              Tem a certeza que deseja excluir a tarefa <span className="font-bold text-slate-700 dark:text-slate-300">{tarefaParaExcluir.titulo}</span>? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setTarefaParaExcluir(null)} className="flex-1 px-5 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">
+                Cancelar
+              </button>
+              <button type="button" onClick={confirmarExclusao} className="flex-1 px-5 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-md active:scale-95">
+                Sim, Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, Trash2, File, Image as ImageIcon, UploadCloud, Folder, ChevronRight, Search, Plus, Loader2 } from 'lucide-react';
+import { FileText, Download, Trash2, File, Image as ImageIcon, UploadCloud, Folder, ChevronRight, Search, Plus, Loader2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api'; 
 
 export default function Documentos() {
     const [documentos, setDocumentos] = useState([]);
     const [clientes, setClientes] = useState([]);
-    const [processos, setProcessos] = useState([]); // <-- VARIÁVEL CRIADA AQUI!
+    const [processos, setProcessos] = useState([]); 
     const [loading, setLoading] = useState(true);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [busca, setBusca] = useState('');
     const [pastaAtiva, setPastaAtiva] = useState(null);
+
+    // 👇 NOVO: Estado para a Modal de Exclusão de Documentos 👇
+    const [documentoParaExcluir, setDocumentoParaExcluir] = useState(null);
 
     const [form, setForm] = useState({ titulo: '', cliente_id: '', processo_id: '', arquivo: null });
 
@@ -31,7 +34,7 @@ export default function Documentos() {
 
             setDocumentos(resDocs.data.data || resDocs.data); 
             setClientes(resClientes.data.data || resClientes.data);
-            setProcessos(resProcessos.data.data || resProcessos.data); // <-- DADOS GUARDADOS AQUI!
+            setProcessos(resProcessos.data.data || resProcessos.data); 
             
         } catch (error) { toast.error("Erro ao carregar o cofre de documentos."); } 
         finally { setLoading(false); }
@@ -67,13 +70,16 @@ export default function Documentos() {
         } finally { setUploading(false); }
     }
 
-    async function excluirDocumento(id) {
-        if (window.confirm("Tem certeza que deseja apagar este ficheiro permanentemente?")) { 
-            try {
-                await api.delete(`/documentos/${id}`);
-                toast.success("Documento removido."); 
-                carregarDados();
-            } catch (error) { toast.error(error.response?.data?.error || "Erro ao remover o documento."); }
+    // 👇 NOVA FUNÇÃO: Confirmar a exclusão e disparar o Toast 👇
+    async function confirmarExclusao() {
+        if (!documentoParaExcluir) return;
+        try {
+            await api.delete(`/documentos/${documentoParaExcluir.id}`);
+            toast.success("Documento removido."); 
+            setDocumentoParaExcluir(null); // Fecha a modal
+            carregarDados();
+        } catch (error) { 
+            toast.error(error.response?.data?.error || "Erro ao remover o documento."); 
         }
     }
 
@@ -94,7 +100,7 @@ export default function Documentos() {
     const documentosFiltrados = documentosDaPasta.filter(doc => doc.titulo.toLowerCase().includes(busca.toLowerCase()));
 
     return (
-        <div className="space-y-4 sm:space-y-6 flex flex-col h-[calc(100vh-6rem)] animate-in fade-in duration-300">
+        <div className="space-y-4 sm:space-y-6 flex flex-col h-[calc(100vh-6rem)] animate-in fade-in duration-300 relative">
             
             {/* CABEÇALHO */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shrink-0">
@@ -177,7 +183,8 @@ export default function Documentos() {
                                                 {renderIcone(doc.extensao)}
                                                 <div className="flex gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                                                     <a href={doc.url} target="_blank" rel="noopener noreferrer" className="p-2 bg-slate-50 dark:bg-slate-800 text-sky-600 dark:text-sky-400 rounded-xl hover:bg-sky-50 dark:hover:bg-sky-900/30 transition-colors tooltip" title="Baixar/Ver"><Download size={18} /></a>
-                                                    <button onClick={() => excluirDocumento(doc.id)} className="p-2 bg-slate-50 dark:bg-slate-800 text-red-500 dark:text-red-400 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors tooltip" title="Excluir permanentemente"><Trash2 size={18} /></button>
+                                                    {/* 👇 Botão de exclusão agora abre a Modal 👇 */}
+                                                    <button onClick={() => setDocumentoParaExcluir(doc)} className="p-2 bg-slate-50 dark:bg-slate-800 text-red-500 dark:text-red-400 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors tooltip" title="Excluir permanentemente"><Trash2 size={18} /></button>
                                                 </div>
                                             </div>
                                             <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm truncate mb-2" title={doc.titulo}>{doc.titulo}</h3>
@@ -252,6 +259,31 @@ export default function Documentos() {
                     </div>
                 </div>
             )}
+
+            {/* 👇 MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE DOCUMENTO 👇 */}
+            {documentoParaExcluir && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setDocumentoParaExcluir(null)}></div>
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full relative shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-6">
+                            <AlertTriangle size={32} className="text-red-600 dark:text-red-500" />
+                        </div>
+                        <h3 className="text-xl font-bold text-center text-slate-800 dark:text-slate-100 mb-2">Excluir Documento?</h3>
+                        <p className="text-center text-slate-500 dark:text-slate-400 text-sm mb-8">
+                            Tem a certeza que deseja apagar o documento <span className="font-bold text-slate-700 dark:text-slate-300">{documentoParaExcluir.titulo}</span>? Esta ação não pode ser desfeita.
+                        </p>
+                        <div className="flex gap-3">
+                            <button type="button" onClick={() => setDocumentoParaExcluir(null)} className="flex-1 px-5 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">
+                                Cancelar
+                            </button>
+                            <button type="button" onClick={confirmarExclusao} className="flex-1 px-5 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-md active:scale-95">
+                                Sim, Excluir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }

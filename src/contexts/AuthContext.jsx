@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect } from 'react';
 import api from '../services/api';
-import axios from 'axios'; // 👈 Adicionado para a chamada direta do CSRF
+ // 👈 Adicionado para a chamada direta do CSRF
 
 export const AuthContext = createContext({});
 
