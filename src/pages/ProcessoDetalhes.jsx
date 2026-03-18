@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
     ArrowLeft, Briefcase, Scale, Clock, FileText, 
-    User, AlertCircle, Calendar, Download, CheckCircle2, Loader2, DollarSign
+    User, AlertCircle, Calendar, Download, CheckCircle2, Loader2, DollarSign, MapPin, Landmark
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -76,7 +76,33 @@ export default function ProcessoDetalhes() {
                                 )}
                             </div>
 
-                            {/* 👇 ADICIONADO: BLOCO DE VALOR DA CAUSA 👇 */}
+                            {/* 👇 ADICIONADO: ÁREA E VARA 👇 */}
+                            {(processo.area || processo.vara) && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {processo.area && (
+                                        <div className="p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-800/50">
+                                            <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400/80 uppercase flex items-center gap-1 mb-1">
+                                                <Landmark size={14} /> Área do Direito
+                                            </span>
+                                            <span className="text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                                                {processo.area}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {processo.vara && (
+                                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+                                            <span className="text-[11px] font-bold text-slate-500 uppercase flex items-center gap-1 mb-1">
+                                                <MapPin size={14} /> Vara / Tribunal
+                                            </span>
+                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300 break-words">
+                                                {processo.vara}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* BLOCO DE VALOR DA CAUSA */}
                             {processo.valor && (
                                 <div className="p-4 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100 dark:border-emerald-800/50">
                                     <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-500/80 uppercase flex items-center gap-1 mb-1">

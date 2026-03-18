@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Briefcase, Eye, AlertCircle, Plus, Edit, Scale, Loader2, DollarSign, Trash2, AlertTriangle } from 'lucide-react';
+import { Search, Briefcase, Eye, AlertCircle, Plus, Edit, Scale, Loader2, DollarSign, Trash2, AlertTriangle, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api'; 
 
@@ -14,11 +14,10 @@ export default function Processos() {
   const [idEmEdicao, setIdEmEdicao] = useState(null);
   const [buscandoCNJ, setBuscandoCNJ] = useState(false);
   
-  // 👇 NOVO: Estado para a Modal de Exclusão de Processo 👇
   const [processoParaExcluir, setProcessoParaExcluir] = useState(null);
 
   const [form, setForm] = useState({
-    numero_processo: '', titulo: '', cliente_id: '', status: 'Ativo', descricao: '', valor: ''
+    numero_processo: '', titulo: '', cliente_id: '', status: 'Ativo', descricao: '', valor: '', area: '', vara: ''
   });
 
   const labelEstilo = "text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 block transition-colors";
@@ -51,7 +50,8 @@ export default function Processos() {
       const response = await api.get(`/processos/cnj/${npuLimpo}`);
       setForm(prev => ({
         ...prev, 
-        titulo: `${response.data.classe} - ${response.data.orgao}`, 
+        titulo: response.data.classe || prev.titulo, 
+        vara: response.data.orgao || prev.vara,
         status: 'Ativo'
       }));
       toast.success("Dados importados do DataJud com sucesso!");
@@ -61,11 +61,9 @@ export default function Processos() {
   const handleValorChange = (e) => {
     let value = e.target.value.replace(/\D/g, ''); 
     if (value === '') { setForm({ ...form, valor: '' }); return; }
-    
     value = (parseInt(value, 10) / 100).toFixed(2) + '';
     value = value.replace(".", ",");
     value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
-    
     setForm({ ...form, valor: value });
   };
 
@@ -73,9 +71,7 @@ export default function Processos() {
     e.preventDefault();
     try {
       const payload = { ...form };
-      if (payload.valor) {
-          payload.valor = payload.valor.replace(/\./g, '').replace(',', '.');
-      }
+      if (payload.valor) payload.valor = payload.valor.replace(/\./g, '').replace(',', '.');
 
       if (idEmEdicao) {
         await api.put(`/processos/${idEmEdicao}`, payload);
@@ -97,29 +93,31 @@ export default function Processos() {
     }
 
     setForm({ 
-      numero_processo: proc.numero_processo || '', titulo: proc.titulo || '', 
-      cliente_id: proc.cliente_id || '', status: proc.status || 'Ativo', 
-      descricao: proc.descricao || '', valor: valorFormatado
+      numero_processo: proc.numero_processo || '', 
+      titulo: proc.titulo || '', 
+      cliente_id: proc.cliente_id || '', 
+      status: proc.status || 'Ativo', 
+      descricao: proc.descricao || '', 
+      valor: valorFormatado,
+      area: proc.area || '',
+      vara: proc.vara || ''
     });
     setIsModalOpen(true);
   }
 
   function fecharModal() {
     setIsModalOpen(false); setIdEmEdicao(null);
-    setForm({ numero_processo: '', titulo: '', cliente_id: '', status: 'Ativo', descricao: '', valor: '' });
+    setForm({ numero_processo: '', titulo: '', cliente_id: '', status: 'Ativo', descricao: '', valor: '', area: '', vara: '' });
   }
 
-  // 👇 NOVA FUNÇÃO: Confirmar a exclusão e disparar o Toast 👇
   async function confirmarExclusao() {
     if (!processoParaExcluir) return;
     try {
       await api.delete(`/processos/${processoParaExcluir.id}`);
       toast.success("Processo excluído permanentemente.");
-      setProcessoParaExcluir(null); // Fecha a modal
-      carregarDados(); // Recarrega a lista da tela
-    } catch (error) { 
-      toast.error(error.response?.data?.error || "Erro ao excluir processo."); 
-    }
+      setProcessoParaExcluir(null); 
+      carregarDados(); 
+    } catch (error) { toast.error(error.response?.data?.error || "Erro ao excluir processo."); }
   }
 
   return (
@@ -163,6 +161,13 @@ export default function Processos() {
                     <td className="px-4 sm:px-6 py-3 sm:py-4">
                       <p className="font-bold text-slate-800 dark:text-slate-200 text-sm sm:text-base">{proc.numero_processo}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-xs">{proc.titulo || proc.tipo_acao}</p>
+                      {/* 👇 EXIBINDO A ÁREA E A VARA AQUI 👇 */}
+                      {(proc.area || proc.vara) && (
+                        <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                          {proc.area && <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded uppercase tracking-wider">{proc.area}</span>}
+                          {proc.vara && <span className="flex items-center gap-1 truncate"><MapPin size={10} /> {proc.vara}</span>}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 sm:px-6 py-3 sm:py-4"><span className="font-medium text-slate-700 dark:text-slate-300 text-sm">{proc.cliente?.nome || 'Não vinculado'}</span></td>
                     <td className="px-4 sm:px-6 py-3 sm:py-4">
@@ -172,7 +177,6 @@ export default function Processos() {
                     <td className="px-4 sm:px-6 py-3 sm:py-4 text-right flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => prepararEdicao(proc)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg" title="Editar"><Edit size={18} /></button>
                       <Link to={`/processos/${proc.id}`} className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg" title="Ver Detalhes"><Eye size={18} /></Link>
-                      {/* 👇 NOVO: Botão de Lixeira Adicionado 👇 */}
                       <button onClick={() => setProcessoParaExcluir(proc)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg" title="Excluir"><Trash2 size={18} /></button>
                     </td>
                   </tr>
@@ -220,6 +224,27 @@ export default function Processos() {
                       {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                     </select>
                   </div>
+
+                  {/* 👇 NOVOS CAMPOS: ÁREA E VARA 👇 */}
+                  <div>
+                    <label className={labelEstilo}>Área do Direito</label>
+                    <select className={inputEstilo} value={form.area} onChange={e => setForm({...form, area: e.target.value})}>
+                      <option value="">Selecione a área...</option>
+                      <option value="Cível">Cível</option>
+                      <option value="Trabalhista">Trabalhista</option>
+                      <option value="Criminal">Criminal</option>
+                      <option value="Tributário">Tributário</option>
+                      <option value="Previdenciário">Previdenciário</option>
+                      <option value="Família e Sucessões">Família e Sucessões</option>
+                      <option value="Consumidor">Consumidor</option>
+                      <option value="Empresarial">Empresarial</option>
+                      <option value="Outros">Outros</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelEstilo}>Vara / Tribunal</label>
+                    <input className={inputEstilo} value={form.vara} onChange={e => setForm({...form, vara: e.target.value})} placeholder="Ex: 1ª Vara Cível da Comarca de Lisboa" />
+                  </div>
                   
                   <div>
                     <label className={labelEstilo}>Valor da Causa (R$)</label>
@@ -254,7 +279,6 @@ export default function Processos() {
         </div>
       )}
 
-      {/* 👇 MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE PROCESSO 👇 */}
       {processoParaExcluir && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setProcessoParaExcluir(null)}></div>
@@ -277,7 +301,6 @@ export default function Processos() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
