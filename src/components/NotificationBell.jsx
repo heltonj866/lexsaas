@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, FileText, AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { Bell, FileText, AlertCircle, CheckCircle, Info, DollarSign } from 'lucide-react';
 import api from '../services/api';
 
 export default function NotificationBell() {
@@ -7,7 +7,6 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
   const dropdownRef = useRef(null);
 
-  // Busca as notificações no banco de dados
   const carregarNotificacoes = async () => {
     try {
       const response = await api.get('/notificacoes');
@@ -17,7 +16,6 @@ export default function NotificationBell() {
     }
   };
 
-  // Carrega ao iniciar e atualiza quando abre o menu
   useEffect(() => {
     carregarNotificacoes();
   }, []);
@@ -26,7 +24,6 @@ export default function NotificationBell() {
     if (isOpen) carregarNotificacoes();
   }, [isOpen]);
 
-  // Fecha o dropdown se clicar fora
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -37,21 +34,18 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Marcar todas como lidas
   const marcarTodasLidas = async (e) => {
-    e.stopPropagation(); // Impede que o clique "vaze" e feche o menu acidentalmente
+    e.stopPropagation(); 
     e.preventDefault();
     
     try {
       await api.put('/notificacoes/ler-todas');
-      // Atualiza o estado local para dar a sensação de resposta imediata
       setNotifications(notifications.map(n => ({ ...n, lida: true })));
     } catch (error) {
       console.error("Erro ao marcar como lidas", error);
     }
   };
 
-  // Marcar uma específica como lida ao clicar nela
   const clicarNotificacao = async (id, lida) => {
     if (!lida) {
       try {
@@ -61,9 +55,10 @@ export default function NotificationBell() {
     }
   };
 
-  // Mapeia o tipo da notificação para um ícone e cor
+  // 👇 ADICIONADO: O mapeamento para o ícone de Dinheiro (Financeiro) 👇
   const getIconConfig = (tipo) => {
     switch(tipo) {
+      case 'financeiro': return { icon: DollarSign, color: 'text-rose-600', bg: 'bg-rose-100 dark:bg-rose-900/30' };
       case 'documento': return { icon: FileText, color: 'text-sky-500', bg: 'bg-sky-100 dark:bg-sky-900/30' };
       case 'prazo': return { icon: AlertCircle, color: 'text-rose-500', bg: 'bg-rose-100 dark:bg-rose-900/30' };
       case 'processo': return { icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-100 dark:bg-emerald-900/30' };
@@ -75,14 +70,12 @@ export default function NotificationBell() {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Botão do Sino */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors focus:outline-none"
       >
         <Bell size={22} className={unreadCount > 0 ? "animate-pulse text-indigo-500" : ""} />
         
-        {/* Bolinha vermelha */}
         {unreadCount > 0 && (
           <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -91,7 +84,6 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* Dropdown de Notificações */}
       {isOpen && (
         <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-50 animate-in slide-in-from-top-2 duration-200 transition-colors">
           
