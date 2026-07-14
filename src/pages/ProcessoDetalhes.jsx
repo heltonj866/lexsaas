@@ -6,22 +6,26 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import GeradorDocumentoModal from '../components/GeradorDocumentoModal';
 
 export default function ProcessoDetalhes() {
     const { id } = useParams();
     const [processo, setProcesso] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [modalGeradorOpen, setModalGeradorOpen] = useState(false);
 
     async function carregarProcesso() {
         try {
             const response = await api.get(`/processos/${id}`);
             setProcesso(response.data);
-        } catch (error) {
+        } catch {
             toast.error("Erro ao carregar detalhes do processo.");
         } finally {
             setLoading(false);
         }
     }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
 
     useEffect(() => { carregarProcesso(); }, [id]);
 
@@ -59,7 +63,7 @@ export default function ProcessoDetalhes() {
                 
                 {/* COLUNA ESQUERDA: INFORMAÇÕES PRINCIPAIS */}
                 <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                    <div className="glass-card p-6 rounded-3xl">
                         <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-5 flex items-center gap-2"><Briefcase className="text-indigo-500" size={20}/> Dados Principais</h2>
                         
                         <div className="space-y-4">
@@ -130,7 +134,7 @@ export default function ProcessoDetalhes() {
                 <div className="lg:col-span-2 space-y-6">
                     
                     {/* PRAZOS (TAREFAS) */}
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+                    <div className="glass-card p-6 rounded-3xl">
                         <div className="flex justify-between items-center mb-5">
                             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><Clock className="text-amber-500" size={20}/> Prazos e Andamentos</h2>
                             <Link to="/tarefas" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
@@ -141,7 +145,7 @@ export default function ProcessoDetalhes() {
                         <div className="space-y-3">
                             {processo.tarefas && processo.tarefas.length > 0 ? (
                                 processo.tarefas.map(tarefa => (
-                                    <div key={tarefa.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 gap-3 group">
+                                    <div key={tarefa.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100/50 dark:border-slate-700/50 gap-3 group hover:shadow-md transition-all">
                                         <div className="flex items-start gap-3">
                                             {tarefa.status === 'concluido' ? <CheckCircle2 className="text-emerald-500 shrink-0 mt-0.5" size={18} /> : <AlertCircle className="text-amber-500 shrink-0 mt-0.5" size={18} />}
                                             <div>
@@ -167,18 +171,23 @@ export default function ProcessoDetalhes() {
                     </div>
 
                     {/* DOCUMENTOS */}
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                        <div className="flex justify-between items-center mb-5">
+                    <div className="glass-card p-6 rounded-3xl">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5">
                             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><FileText className="text-sky-500" size={20}/> Peças e Documentos</h2>
-                            <Link to="/documentos" className="text-xs font-bold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/30 px-3 py-1.5 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900/50 transition-colors">
-                                Aceder Cofre
-                            </Link>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setModalGeradorOpen(true)} className="text-xs font-bold text-white bg-gradient-to-r from-sky-500 to-sky-600 px-3 py-1.5 rounded-lg hover:shadow-md hover:shadow-sky-500/30 transition-all flex items-center gap-1.5">
+                                    <FileText size={14} /> Gerar Documento
+                                </button>
+                                <Link to="/documentos" className="text-xs font-bold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/30 px-3 py-1.5 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900/50 transition-colors">
+                                    Aceder Cofre
+                                </Link>
+                            </div>
                         </div>
 
                         {processo.documentos && processo.documentos.length > 0 ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {processo.documentos.map(doc => (
-                                    <div key={doc.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50 flex justify-between items-center group">
+                                    <div key={doc.id} className="p-4 bg-white/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100/50 dark:border-slate-700/50 flex justify-between items-center group hover:shadow-md transition-all">
                                         <div className="overflow-hidden">
                                             <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate">{doc.titulo}</h4>
                                             <span className="text-[10px] font-bold text-slate-400 uppercase">{doc.extensao} • {doc.tamanho_kb} KB</span>
@@ -199,6 +208,14 @@ export default function ProcessoDetalhes() {
 
                 </div>
             </div>
+
+            <GeradorDocumentoModal 
+                isOpen={modalGeradorOpen} 
+                onClose={() => setModalGeradorOpen(false)} 
+                cliente={processo.cliente} 
+                processo={processo} 
+                onDocumentSaved={carregarProcesso}
+            />
         </div>
     );
 }

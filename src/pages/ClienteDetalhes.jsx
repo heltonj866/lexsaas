@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Phone, Mail, Briefcase, FileText, Plus, Search, X, Edit, Trash2, Upload, Loader2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import GeradorDocumentoModal from '../components/GeradorDocumentoModal';
 
 export default function ClienteDetalhes() {
   const { id } = useParams();
@@ -17,6 +18,7 @@ export default function ClienteDetalhes() {
   // 👇 NOVOS: Estados para as Modais de Exclusão 👇
   const [processoParaExcluir, setProcessoParaExcluir] = useState(null);
   const [documentoParaExcluir, setDocumentoParaExcluir] = useState(null);
+  const [modalGeradorOpen, setModalGeradorOpen] = useState(false);
 
   async function carregarCliente() {
     try {
@@ -31,6 +33,8 @@ export default function ClienteDetalhes() {
       setLoading(false);
     }
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   useEffect(() => { carregarCliente(); }, [id]);
 
@@ -50,7 +54,7 @@ export default function ClienteDetalhes() {
         vara: response.data.orgao || 'Vara não identificada' 
       }));
       toast.success("Dados encontrados!");
-    } catch (error) {
+    } catch {
       toast.error("Não foi possível buscar no CNJ automaticamente.");
     } finally {
       setBuscandoCnj(false);
@@ -80,7 +84,7 @@ export default function ClienteDetalhes() {
       toast.success("Processo desvinculado e excluído!");
       setProcessoParaExcluir(null);
       carregarCliente(); 
-    } catch (error) {
+    } catch {
       toast.error("Erro ao excluir o processo.");
     }
   }
@@ -117,7 +121,7 @@ export default function ClienteDetalhes() {
       toast.success("Documento excluído do cofre!");
       setDocumentoParaExcluir(null);
       carregarCliente();
-    } catch (error) {
+    } catch {
       toast.error("Erro ao excluir documento.");
     }
   }
@@ -149,7 +153,7 @@ export default function ClienteDetalhes() {
         
         {/* COLUNA ESQUERDA: DADOS PESSOAIS */}
         <div className="lg:col-span-1">
-          <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden transition-colors duration-300">
+          <div className="glass-card p-5 sm:p-6 rounded-3xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-sky-50 dark:bg-sky-900/10 rounded-bl-full -z-10 transition-colors"></div>
             
             <div className="flex items-center justify-between mb-6">
@@ -189,7 +193,7 @@ export default function ClienteDetalhes() {
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           
           {/* BLOCO DE PROCESSOS */}
-          <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-300">
+          <div className="glass-card p-5 sm:p-6 rounded-3xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-3 sm:p-3.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl transition-colors"><Briefcase size={24} /></div>
@@ -198,7 +202,7 @@ export default function ClienteDetalhes() {
                   <p className="text-xs text-slate-500 dark:text-slate-400 transition-colors">{cliente.processos?.length || 0} processo(s)</p>
                 </div>
               </div>
-              <button onClick={() => setIsProcessoModalOpen(true)} className="text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 dark:hover:bg-indigo-500 px-5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 w-full sm:w-auto">
+              <button onClick={() => setIsProcessoModalOpen(true)} className="text-sm font-bold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 px-5 py-2.5 rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all flex items-center justify-center gap-2 active:scale-95 w-full sm:w-auto">
                 <Plus size={18} /> Novo Processo
               </button>
             </div>
@@ -206,7 +210,7 @@ export default function ClienteDetalhes() {
             {cliente.processos && cliente.processos.length > 0 ? (
               <div className="space-y-4">
                 {cliente.processos.map(proc => (
-                  <div key={proc.id} className="p-4 sm:p-5 border border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50 dark:bg-slate-800/50 hover:shadow-sm transition-all group animate-in fade-in slide-in-from-top-2">
+                  <div key={proc.id} className="p-4 sm:p-5 border border-slate-100/50 dark:border-slate-800/50 rounded-2xl bg-white/50 dark:bg-slate-800/30 hover:shadow-md hover:-translate-y-1 transition-all duration-300 group animate-in fade-in slide-in-from-top-2 backdrop-blur-sm">
                     <div className="flex flex-col xs:flex-row justify-between items-start gap-3 mb-3">
                       <div>
                         <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase bg-white dark:bg-slate-900 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 mr-2 shadow-sm transition-colors">{proc.status || 'Ativo'}</span>
@@ -236,7 +240,7 @@ export default function ClienteDetalhes() {
           </div>
 
           {/* BLOCO DE DOCUMENTOS */}
-          <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-300">
+          <div className="glass-card p-5 sm:p-6 rounded-3xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-3 sm:p-3.5 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-2xl transition-colors"><FileText size={24} /></div>
@@ -245,16 +249,21 @@ export default function ClienteDetalhes() {
                   <p className="text-xs text-slate-500 dark:text-slate-400 transition-colors">{cliente.documentos?.length || 0} arquivo(s)</p>
                 </div>
               </div>
-              <label className="text-sm font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 px-5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95 w-full sm:w-auto">
-                <Upload size={18} /> Anexar
-                <input type="file" className="hidden" onChange={handleUploadDocumento} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" />
-              </label>
+              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                <button onClick={() => setModalGeradorOpen(true)} className="text-xs font-bold text-white bg-gradient-to-r from-sky-500 to-sky-600 px-4 py-3 rounded-xl hover:shadow-lg hover:shadow-sky-500/30 transition-all flex items-center justify-center gap-2 active:scale-95 w-full sm:w-auto">
+                  <FileText size={16} /> Gerar
+                </button>
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 px-5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95 w-full sm:w-auto">
+                  <Upload size={18} /> Anexar
+                  <input type="file" className="hidden" onChange={handleUploadDocumento} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" />
+                </label>
+              </div>
             </div>
 
             {cliente.documentos && cliente.documentos.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {cliente.documentos.map(doc => (
-                  <div key={doc.id} className="flex items-center justify-between p-3.5 sm:p-4 border border-slate-200 dark:border-slate-700 rounded-2xl hover:shadow-md bg-slate-50 dark:bg-slate-800/50 group animate-in fade-in zoom-in-95 transition-all">
+                  <div key={doc.id} className="flex items-center justify-between p-3.5 sm:p-4 border border-slate-200/50 dark:border-slate-700/50 rounded-2xl hover:shadow-md hover:-translate-y-1 bg-white/50 dark:bg-slate-800/30 backdrop-blur-sm group animate-in fade-in zoom-in-95 transition-all duration-300">
                     <div className="flex items-center gap-3 overflow-hidden">
                       <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm shrink-0 transition-colors"><FileText size={20} className="text-rose-500 dark:text-rose-400" /></div>
                       <div className="truncate">
@@ -391,6 +400,15 @@ export default function ClienteDetalhes() {
           </div>
         </div>
       )}
+
+      {/* 👇 MODAL DO GERADOR DE DOCUMENTOS 👇 */}
+      <GeradorDocumentoModal 
+          isOpen={modalGeradorOpen} 
+          onClose={() => setModalGeradorOpen(false)} 
+          cliente={cliente} 
+          processo={null} 
+          onDocumentSaved={carregarCliente}
+      />
 
     </div>
   );

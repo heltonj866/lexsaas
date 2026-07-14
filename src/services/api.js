@@ -1,8 +1,10 @@
 import axios from 'axios';
 
 const api = axios.create({
-  // Colocamos o localhost:8000 como um "Plano B" automático!
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+  // Força o Axios a usar o mesmo hostname (localhost vs 127.0.0.1) dinamicamente
+  baseURL: `http://${window.location.hostname}:8000/api`,
+  withCredentials: true,
+  withXSRFToken: true,
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json'

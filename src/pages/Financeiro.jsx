@@ -1,7 +1,30 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, DollarSign, TrendingUp, TrendingDown, Wallet, Users, Briefcase, Loader2, Trash2, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Plus, Edit, DollarSign, TrendingUp, TrendingDown, Wallet, Users, Briefcase, Loader2, Trash2, AlertTriangle, AlertCircle, FileText, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import FaturaModal from '../components/FaturaModal';
+
+const LABEL = 'text-[10px] font-bold uppercase tracking-widest block mb-1.5';
+const getInputStyle = () => ({
+  background: '#07091A',
+  border: '1px solid rgba(255,255,255,0.08)',
+  color: '#E2E8F0',
+  borderRadius: '10px',
+  padding: '10px 12px',
+  fontSize: '13px',
+  outline: 'none',
+  width: '100%',
+  transition: 'border-color 0.15s',
+});
+
+function FormField({ label, children }) {
+  return (
+    <div>
+      <label className={LABEL} style={{ color: '#475569' }}>{label}</label>
+      {children}
+    </div>
+  );
+}
 
 export default function Financeiro() {
   const [lancamentos, setLancamentos] = useState([]);
@@ -13,13 +36,12 @@ export default function Financeiro() {
   const [idEmEdicao, setIdEmEdicao] = useState(null);
 
   const [lancamentoParaExcluir, setLancamentoParaExcluir] = useState(null);
+  const [faturaParaGerar, setFaturaParaGerar] = useState(null);
+  const [filtroAtual, setFiltroAtual] = useState('todos'); // 'todos', 'receitas', 'despesas', 'pendentes', 'atrasados'
 
   const [form, setForm] = useState({
-    descricao: '', valor: '', tipo: 'receita', categoria: 'honorarios', data_vencimento: '', status: 'pendente', processo_id: '', cliente_id: ''
+    descricao: '', valor: '', tipo: 'receita', categoria: 'honorarios', data_vencimento: '', status: 'pendente', processo_id: '', cliente_id: '', metodo_pagamento: ''
   });
-
-  const labelEstilo = "text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 block transition-colors";
-  const inputEstilo = "w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-sm text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm";
 
   async function carregarDados() {
     try {
@@ -31,8 +53,10 @@ export default function Financeiro() {
       setClientes(resClientes.data.data || resClientes.data);
       setProcessos(resProcessos.data.data || resProcessos.data);
       calcularResumo(resLancamentos.data.data || []);
-    } catch (error) { toast.error("Erro ao carregar dados."); } finally { setLoading(false); }
+    } catch { toast.error("Erro ao carregar dados."); } finally { setLoading(false); }
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   useEffect(() => { carregarDados(); }, []);
 
@@ -54,7 +78,7 @@ export default function Financeiro() {
       toast.success("Lançamento salvo!");
       fecharModal();
       carregarDados(); 
-    } catch (error) { toast.error("Erro ao salvar."); }
+    } catch { toast.error("Erro ao salvar."); }
   }
 
   async function confirmarExclusao() {
@@ -64,7 +88,7 @@ export default function Financeiro() {
         toast.success("Lançamento excluído com sucesso!"); 
         setLancamentoParaExcluir(null); 
         carregarDados(); 
-    } catch (error) { 
+    } catch { 
         toast.error("Erro ao excluir lançamento."); 
     }
   }
@@ -75,7 +99,7 @@ export default function Financeiro() {
         await api.put(`/financeiro/${lancamento.id}`, { ...lancamento, status: novoStatus }); 
         carregarDados(); 
         toast.success(novoStatus === 'pago' ? 'Marcado como concluído!' : 'Marcado como pendente!');
-    } catch (error) { toast.error("Erro ao atualizar o status."); }
+    } catch { toast.error("Erro ao atualizar o status."); }
   }
 
   function prepararEdicao(item) {
@@ -83,38 +107,36 @@ export default function Financeiro() {
     setForm({
       descricao: item.descricao || '', valor: item.valor || '', tipo: item.tipo || 'receita', categoria: item.categoria || 'honorarios', 
       data_vencimento: item.data_vencimento ? item.data_vencimento.split('T')[0] : '', status: item.status || 'pendente', 
-      processo_id: item.processo_id || '', cliente_id: item.cliente_id || ''
+      processo_id: item.processo_id || '', cliente_id: item.cliente_id || '', metodo_pagamento: item.metodo_pagamento || ''
     });
     setIsModalOpen(true);
   }
 
   function fecharModal() {
     setIsModalOpen(false); setIdEmEdicao(null);
-    setForm({ descricao: '', valor: '', tipo: 'receita', categoria: 'honorarios', data_vencimento: '', status: 'pendente', processo_id: '', cliente_id: '' });
+    setForm({ descricao: '', valor: '', tipo: 'receita', categoria: 'honorarios', data_vencimento: '', status: 'pendente', processo_id: '', cliente_id: '', metodo_pagamento: '' });
   }
 
   const formatarMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-  // Função auxiliar para definir como o botão de status vai aparecer
   const renderStatusButton = (lancamento) => {
     const isReceita = lancamento.tipo === 'receita';
     const isPago = lancamento.status === 'pago';
     
-    let texto = '';
-    let corClasses = '';
-
-    if (isPago) {
-      texto = isReceita ? 'Recebido' : 'Pago';
-      corClasses = 'bg-emerald-500 text-white shadow-sm hover:bg-emerald-600';
-    } else {
-      texto = isReceita ? 'A Receber' : 'A Pagar';
-      corClasses = 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-400';
-    }
+    let texto = isPago ? (isReceita ? 'Recebido' : 'Pago') : (isReceita ? 'A Receber' : 'A Pagar');
+    
+    // IURIS Premium styling for status badge buttons
+    const estilo = isPago
+      ? { background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.2)' }
+      : { background: 'rgba(245,158,11,0.1)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.2)' };
 
     return (
       <button 
         onClick={() => alternarStatus(lancamento)} 
-        className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all active:scale-95 whitespace-nowrap ${corClasses}`}
+        className="px-2 py-1 rounded text-[10px] font-bold uppercase transition-all"
+        style={estilo}
+        onMouseEnter={e => { e.currentTarget.style.background = isPago ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = isPago ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)'; }}
       >
         {texto}
       </button>
@@ -122,149 +144,294 @@ export default function Financeiro() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300 relative">
+    <div className="space-y-5 animate-enter pb-8">
+      
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Financeiro</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Fluxo de caixa e honorários</p>
+          <h1 className="text-2xl font-black tracking-tight" style={{ color: '#F1F5F9', letterSpacing: '-0.03em' }}>Financeiro</h1>
+          <p className="text-xs mt-0.5" style={{ color: '#475569' }}>Fluxo de caixa e honorários</p>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-white hover:bg-indigo-700 transition-all shadow-sm active:scale-95 font-bold">
-          <Plus size={20} /> Nova Movimentação
+        <button onClick={() => setIsModalOpen(true)} className="btn-primary flex items-center gap-2 px-4 py-2 rounded-xl text-sm">
+          <Plus size={16} /> Nova Movimentação
         </button>
       </div>
 
+      {/* Cards de Resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm"><div className="flex items-center gap-2 text-emerald-600 mb-2 font-bold text-xs uppercase tracking-wider"><TrendingUp size={16}/> Receitas</div><p className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-100">{formatarMoeda(resumo.receitas)}</p></div>
-        <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm"><div className="flex items-center gap-2 text-rose-600 mb-2 font-bold text-xs uppercase tracking-wider"><TrendingDown size={16}/> Despesas</div><p className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-100">{formatarMoeda(resumo.despesas)}</p></div>
-        <div className={`p-5 sm:p-6 rounded-2xl border shadow-sm ${resumo.saldo >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/50' : 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800/50'}`}>
-          <div className={`flex items-center gap-2 mb-2 font-bold text-xs uppercase tracking-wider ${resumo.saldo >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}><Wallet size={16}/> Saldo Total</div>
-          <p className={`text-2xl sm:text-3xl font-black ${resumo.saldo >= 0 ? 'text-slate-900 dark:text-emerald-50' : 'text-slate-900 dark:text-rose-50'}`}>{formatarMoeda(resumo.saldo)}</p>
+        <div className="glass-card p-5 rounded-2xl group transition-all" style={{ border: '1px solid rgba(255,255,255,0.04)' }}>
+            <div className="flex items-center gap-2 mb-2 font-bold text-[10px] uppercase tracking-wider" style={{ color: '#10B981' }}>
+                <TrendingUp size={14}/> Receitas
+            </div>
+            <p className="text-2xl font-black" style={{ color: '#F1F5F9' }}>{formatarMoeda(resumo.receitas)}</p>
+        </div>
+        <div className="glass-card p-5 rounded-2xl group transition-all" style={{ border: '1px solid rgba(255,255,255,0.04)' }}>
+            <div className="flex items-center gap-2 mb-2 font-bold text-[10px] uppercase tracking-wider" style={{ color: '#EF4444' }}>
+                <TrendingDown size={14}/> Despesas
+            </div>
+            <p className="text-2xl font-black" style={{ color: '#F1F5F9' }}>{formatarMoeda(resumo.despesas)}</p>
+        </div>
+        <div className="p-5 rounded-2xl transition-all shadow-lg" 
+             style={{ 
+                background: resumo.saldo >= 0 ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)',
+                border: `1px solid ${resumo.saldo >= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`
+             }}>
+          <div className="flex items-center gap-2 mb-2 font-bold text-[10px] uppercase tracking-wider" 
+               style={{ color: resumo.saldo >= 0 ? '#10B981' : '#EF4444' }}>
+               <Wallet size={14}/> Saldo Total
+          </div>
+          <p className="text-2xl font-black" style={{ color: resumo.saldo >= 0 ? '#6EE7B7' : '#FCA5A5' }}>
+              {formatarMoeda(resumo.saldo)}
+          </p>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col transition-colors">
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left text-sm whitespace-nowrap min-w-[700px]">
-            <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 uppercase text-[10px] sm:text-xs font-bold tracking-wider">
-              <tr><th className="px-4 sm:px-6 py-4">Descrição</th><th className="px-4 sm:px-6 py-4">Tipo</th><th className="px-4 sm:px-6 py-4">Valor</th><th className="px-4 sm:px-6 py-4">Vencimento</th><th className="px-4 sm:px-6 py-4">Status</th><th className="px-4 sm:px-6 py-4 text-right">Ações</th></tr>
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-2">
+        {['todos', 'receitas', 'despesas', 'pendentes', 'atrasados'].map(f => (
+          <button 
+            key={f} 
+            onClick={() => setFiltroAtual(f)}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all"
+            style={{ 
+                background: filtroAtual === f ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.02)',
+                color: filtroAtual === f ? '#A78BFA' : '#64748B',
+                border: `1px solid ${filtroAtual === f ? 'rgba(124,58,237,0.3)' : 'rgba(255,255,255,0.05)'}`
+            }}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
+      {/* Tabela */}
+      <div className="glass-card rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  {['Descrição', 'Tipo', 'Valor', 'Vencimento', 'Status', 'Ações'].map((h, i) => (
+                      <th key={h} className={`px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest ${i === 5 ? 'text-right' : ''}`}
+                          style={{ color: '#334155', background: 'rgba(255,255,255,0.02)' }}>{h}</th>
+                  ))}
+              </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-              {lancamentos.map((l) => {
-                // 👇 LÓGICA DE ALERTA DE VENCIMENTO 👇
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="6" className="py-12 text-center">
+                  <Loader2 size={20} className="animate-spin mx-auto" style={{ color: '#F59E0B' }} />
+                </td></tr>
+              ) : lancamentos.length > 0 ? lancamentos.filter(l => {
+                const isAtrasado = new Date(l.data_vencimento) < new Date() && l.status === 'pendente';
+                if (filtroAtual === 'receitas') return l.tipo === 'receita';
+                if (filtroAtual === 'despesas') return l.tipo === 'despesa';
+                if (filtroAtual === 'pendentes') return l.status === 'pendente';
+                if (filtroAtual === 'atrasados') return isAtrasado;
+                return true;
+              }).map((l) => {
                 const hoje = new Date();
                 hoje.setHours(0, 0, 0, 0);
                 const dataVenc = new Date(l.data_vencimento);
                 const isAtrasado = dataVenc < hoje && l.status === 'pendente';
 
                 return (
-                  <tr key={l.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 group transition-colors">
-                    <td className="px-4 sm:px-6 py-3 sm:py-4">
-                      <div className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2">
-                        {isAtrasado && <AlertCircle size={16} className="text-rose-500" title="Conta em atraso!" />}
+                  <tr key={l.id} className="group transition-colors"
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <td className="px-5 py-3.5">
+                      <div className="font-bold text-sm flex items-center gap-2" style={{ color: '#E2E8F0' }}>
+                        {isAtrasado && <AlertCircle size={14} style={{ color: '#EF4444' }} title="Conta em atraso!" />}
                         {l.descricao}
                       </div>
-                      <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-1">
-                        {l.processo?.numero_processo ? <><Briefcase size={12}/> {l.processo.numero_processo}</> : ''}
-                        {!l.processo?.numero_processo && l.cliente?.nome ? <><Users size={12}/> {l.cliente.nome}</> : ''}
+                      <div className="flex items-center gap-1.5 text-[10px] mt-1" style={{ color: '#64748B' }}>
+                        {l.processo?.numero_processo ? <><Briefcase size={10}/> {l.processo.numero_processo}</> : ''}
+                        {!l.processo?.numero_processo && l.cliente?.nome ? <><Users size={10}/> {l.cliente.nome}</> : ''}
                       </div>
                     </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4"><span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${l.tipo === 'receita' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{l.tipo}</span></td>
-                    <td className={`px-4 sm:px-6 py-3 sm:py-4 font-bold ${l.tipo === 'receita' ? 'text-emerald-600' : 'text-rose-600'}`}>{l.tipo === 'despesa' && '-'} {formatarMoeda(l.valor)}</td>
-                    
-                    {/* Data de Vencimento destacada se estiver atrasada */}
-                    <td className={`px-4 sm:px-6 py-3 sm:py-4 text-xs font-medium ${isAtrasado ? 'text-rose-600 font-bold' : 'text-slate-500'}`}>
-                      {dataVenc.toLocaleDateString('pt-BR', {timeZone: 'UTC'})}
-                      {isAtrasado && <span className="block text-[10px] text-rose-500 mt-0.5">Vencido</span>}
+                    <td className="px-5 py-3.5">
+                        <span className="px-2 py-1 rounded text-[9px] font-bold uppercase"
+                              style={l.tipo === 'receita' ? { background: 'rgba(16,185,129,0.1)', color: '#10B981' } : { background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
+                            {l.tipo}
+                        </span>
                     </td>
-                    
-                    <td className="px-4 sm:px-6 py-3 sm:py-4">
+                    <td className="px-5 py-3.5 font-bold" style={{ color: l.tipo === 'receita' ? '#34D399' : '#FCA5A5' }}>
+                        {l.tipo === 'despesa' && '-'} {formatarMoeda(l.valor)}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs font-medium" style={{ color: isAtrasado ? '#EF4444' : '#94A3B8' }}>
+                      {dataVenc.toLocaleDateString('pt-BR', {timeZone: 'UTC'})}
+                      {isAtrasado && <span className="block text-[9px] font-bold mt-0.5" style={{ color: '#EF4444' }}>VENCIDO</span>}
+                    </td>
+                    <td className="px-5 py-3.5">
                       {renderStatusButton(l)}
                     </td>
-                    
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 text-right flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => prepararEdicao(l)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg"><Edit size={18} /></button>
-                      <button onClick={() => setLancamentoParaExcluir(l)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"><Trash2 size={18} /></button>
+                    <td className="px-5 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {l.tipo === 'receita' && (
+                                <button onClick={() => setFaturaParaGerar(l)} className="p-1.5 rounded-lg transition-colors"
+                                        style={{ color: '#475569' }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.1)'; e.currentTarget.style.color = '#60A5FA'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#475569'; }}
+                                        title="Gerar Fatura em PDF">
+                                <FileText size={14} />
+                                </button>
+                            )}
+                            <button onClick={() => prepararEdicao(l)} className="p-1.5 rounded-lg transition-colors"
+                                    style={{ color: '#475569' }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.1)'; e.currentTarget.style.color = '#F59E0B'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#475569'; }}>
+                                <Edit size={14} />
+                            </button>
+                            <button onClick={() => setLancamentoParaExcluir(l)} className="p-1.5 rounded-lg transition-colors"
+                                    style={{ color: '#475569' }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = '#EF4444'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#475569'; }}>
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
                     </td>
                   </tr>
                 );
-              })}
+              }) : (
+                  <tr><td colSpan="6" className="py-16 text-center">
+                  <Wallet size={32} className="mx-auto mb-3" style={{ color: '#1E293B' }} />
+                  <p className="text-sm font-semibold" style={{ color: '#334155' }}>Nenhuma movimentação encontrada</p>
+                </td></tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* Modal Nova Movimentação */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-slate-900 border dark:border-slate-800 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 shrink-0">
-              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2"><DollarSign className="text-indigo-600 dark:text-indigo-400"/> {idEmEdicao ? 'Editar Lançamento' : 'Novo Lançamento'}</h2>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={fecharModal} />
+          <div className="relative w-full sm:max-w-lg flex flex-col max-h-[92vh] animate-enter"
+               style={{ background: '#0D1117', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '20px' }}>
+            
+            <div className="flex items-center justify-between px-5 py-4 shrink-0"
+                 style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg" style={{ background: 'rgba(124,58,237,0.12)' }}>
+                        <DollarSign size={15} style={{ color: '#A78BFA' }} />
+                    </div>
+                    <h2 className="text-base font-bold" style={{ color: '#F1F5F9' }}>
+                    {idEmEdicao ? 'Editar Lançamento' : 'Novo Lançamento'}
+                    </h2>
+                </div>
+                <button onClick={fecharModal} className="p-1.5 rounded-lg" style={{ color: '#475569', background: 'rgba(255,255,255,0.04)' }}>
+                    <X size={15} />
+                </button>
             </div>
-            <div className="overflow-y-auto custom-scrollbar flex-1 p-5 sm:p-6">
-              <form id="form-fin" onSubmit={handleSalvar} className="space-y-5 pb-4 px-1">
-                <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl mb-2">
-                  <button type="button" onClick={() => setForm({...form, tipo: 'receita'})} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all active:scale-95 ${form.tipo === 'receita' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm border border-slate-200/50' : 'text-slate-500'}`}>RECEITA</button>
-                  <button type="button" onClick={() => setForm({...form, tipo: 'despesa'})} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all active:scale-95 ${form.tipo === 'despesa' ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm border border-slate-200/50' : 'text-slate-500'}`}>DESPESA</button>
+            
+            <div className="overflow-y-auto flex-1 p-5">
+              <form id="form-fin" onSubmit={handleSalvar} className="space-y-4">
+                
+                <div className="flex gap-2 p-1 rounded-xl mb-2" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <button type="button" onClick={() => setForm({...form, tipo: 'receita'})} 
+                          className="flex-1 py-2 rounded-lg text-xs font-bold transition-all"
+                          style={form.tipo === 'receita' ? { background: 'rgba(16,185,129,0.15)', color: '#10B981', border: '1px solid rgba(16,185,129,0.3)' } : { color: '#64748B' }}>
+                      RECEITA
+                  </button>
+                  <button type="button" onClick={() => setForm({...form, tipo: 'despesa'})} 
+                          className="flex-1 py-2 rounded-lg text-xs font-bold transition-all"
+                          style={form.tipo === 'despesa' ? { background: 'rgba(239,68,68,0.15)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)' } : { color: '#64748B' }}>
+                      DESPESA
+                  </button>
                 </div>
-                <div>
-                  <label className={labelEstilo}>Descrição do Lançamento</label>
-                  <input required className={inputEstilo} value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} placeholder="Ex: Honorários Iniciais, Aluguel..." />
-                </div>
+                
+                <FormField label="Descrição do Lançamento">
+                  <input required style={getInputStyle()} value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} placeholder="Ex: Honorários Iniciais, Aluguel..." 
+                         onFocus={e => e.target.style.borderColor = 'rgba(124,58,237,0.5)'}
+                         onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'} />
+                </FormField>
+                
                 <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelEstilo}>Valor (R$)</label>
-                    <input type="number" step="0.01" required className={inputEstilo} value={form.valor} onChange={e => setForm({...form, valor: e.target.value})} placeholder="0.00" />
-                  </div>
-                  <div>
-                    <label className={labelEstilo}>Data de Vencimento</label>
-                    <input type="date" required className={inputEstilo} value={form.data_vencimento} onChange={e => setForm({...form, data_vencimento: e.target.value})} />
-                  </div>
+                  <FormField label="Valor (R$)">
+                    <input type="number" step="0.01" required style={{...getInputStyle(), color: form.tipo === 'receita' ? '#6EE7B7' : '#FCA5A5', fontFamily: 'monospace'}} value={form.valor} onChange={e => setForm({...form, valor: e.target.value})} placeholder="0.00" 
+                           onFocus={e => e.target.style.borderColor = 'rgba(124,58,237,0.5)'}
+                           onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'} />
+                  </FormField>
+                  <FormField label="Data de Vencimento">
+                    <input type="date" required style={{...getInputStyle(), colorScheme: 'dark'}} value={form.data_vencimento} onChange={e => setForm({...form, data_vencimento: e.target.value})} 
+                           onFocus={e => e.target.style.borderColor = 'rgba(124,58,237,0.5)'}
+                           onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'} />
+                  </FormField>
+                  
+                  {form.tipo === 'receita' && (
+                    <FormField label="Forma de Pagamento">
+                      <select style={getInputStyle()} value={form.metodo_pagamento} onChange={e => setForm({...form, metodo_pagamento: e.target.value})}
+                              onFocus={e => e.target.style.borderColor = 'rgba(124,58,237,0.5)'}
+                              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}>
+                        <option value="">A definir</option>
+                        <option value="Pix">Pix</option>
+                        <option value="Cartão de Crédito">Cartão de Crédito</option>
+                        <option value="Boleto">Boleto Bancário</option>
+                        <option value="Transferência">Transferência</option>
+                        <option value="Dinheiro">Dinheiro</option>
+                      </select>
+                    </FormField>
+                  )}
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 mt-4">
-                  <div className="space-y-4">
-                    <div>
-                      <label className={labelEstilo}>Vincular Cliente (Opcional)</label>
-                      <select className={inputEstilo} value={form.cliente_id} onChange={e => setForm({...form, cliente_id: e.target.value})}>
+                
+                <div className="p-4 rounded-xl border-dashed mt-4 space-y-4" style={{ background: 'rgba(255,255,255,0.01)', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                    <FormField label="Vincular Cliente (Opcional)">
+                      <select style={getInputStyle()} value={form.cliente_id} onChange={e => setForm({...form, cliente_id: e.target.value})}
+                              onFocus={e => e.target.style.borderColor = 'rgba(124,58,237,0.5)'}
+                              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}>
                         <option value="">Geral / Despesa do Escritório</option>
                         {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                       </select>
-                    </div>
-                    <div>
-                      <label className={labelEstilo}>Vincular Processo (Opcional)</label>
-                      <select className={inputEstilo} value={form.processo_id} onChange={e => setForm({...form, processo_id: e.target.value})}>
+                    </FormField>
+                    <FormField label="Vincular Processo (Opcional)">
+                      <select style={getInputStyle()} value={form.processo_id} onChange={e => setForm({...form, processo_id: e.target.value})}
+                              onFocus={e => e.target.style.borderColor = 'rgba(124,58,237,0.5)'}
+                              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}>
                         <option value="">Sem processo</option>
                         {processos.map(p => <option key={p.id} value={p.id}>{p.numero_processo}</option>)}
                       </select>
-                    </div>
-                  </div>
+                    </FormField>
                 </div>
               </form>
             </div>
-            <div className="flex justify-end gap-3 p-5 sm:p-6 border-t border-slate-100 dark:border-slate-800 shrink-0 bg-slate-50 dark:bg-slate-900 rounded-b-2xl">
-              <button type="button" onClick={fecharModal} className="px-5 py-3 font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl transition-colors active:scale-95 text-sm">Cancelar</button>
-              <button type="submit" form="form-fin" className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95 text-sm">Salvar Lançamento</button>
+            
+            <div className="px-5 py-4 flex gap-3 shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+              <button type="button" onClick={fecharModal} className="flex-1 py-2.5 rounded-xl text-sm font-semibold btn-ghost">Cancelar</button>
+              <button type="submit" form="form-fin" className="flex-1 py-2.5 rounded-xl text-sm font-bold btn-primary">Salvar Lançamento</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Modal Exclusão */}
       {lancamentoParaExcluir && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setLancamentoParaExcluir(null)}></div>
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full relative shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-6">
-              <AlertTriangle size={32} className="text-red-600 dark:text-red-500" />
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setLancamentoParaExcluir(null)} />
+          <div className="relative rounded-2xl p-6 max-w-sm w-full animate-enter"
+               style={{ background: '#131929', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ background: 'rgba(239,68,68,0.10)' }}>
+              <AlertTriangle size={22} style={{ color: '#EF4444' }} />
             </div>
-            <h3 className="text-xl font-bold text-center text-slate-800 dark:text-slate-100 mb-2">Excluir Lançamento?</h3>
-            <p className="text-center text-slate-500 dark:text-slate-400 text-sm mb-8">
-              Tem a certeza que deseja excluir o lançamento de <span className="font-bold text-slate-700 dark:text-slate-300">{formatarMoeda(lancamentoParaExcluir.valor)}</span>? Esta ação não pode ser desfeita.
+            <h3 className="text-base font-bold text-center mb-1" style={{ color: '#F1F5F9' }}>Excluir Lançamento?</h3>
+            <p className="text-center text-xs mb-6" style={{ color: '#475569' }}>
+              Deseja excluir o lançamento de <span className="font-semibold" style={{ color: '#CBD5E1' }}>{formatarMoeda(lancamentoParaExcluir.valor)}</span>?
             </p>
             <div className="flex gap-3">
-              <button type="button" onClick={() => setLancamentoParaExcluir(null)} className="flex-1 px-5 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">Cancelar</button>
-              <button type="button" onClick={confirmarExclusao} className="flex-1 px-5 py-3 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-md active:scale-95">Sim, Excluir</button>
+              <button type="button" onClick={() => setLancamentoParaExcluir(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold btn-ghost">Cancelar</button>
+              <button type="button" onClick={confirmarExclusao} className="flex-1 py-2.5 rounded-xl text-sm font-semibold btn-danger">Excluir</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Modal Fatura PDF */}
+      <FaturaModal 
+        isOpen={!!faturaParaGerar} 
+        onClose={() => setFaturaParaGerar(null)} 
+        lancamento={faturaParaGerar} 
+      />
+
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { AuthContext } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function Cadastro() {
-  const [form, setForm] = useState({ nome_escritorio: '', name: '', email: '', password: '' });
+  const [form, setForm] = useState({ nome_escritorio: '', name: '', email: '', password: '', telefone: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { signUp } = useContext(AuthContext);
@@ -44,7 +44,7 @@ export default function Cadastro() {
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Crie a sua conta de Administrador (Sócio).</p>
 
           {/* ALERTA PARA FUNCIONÁRIOS */}
-          <div className="mb-6 p-4 bg-sky-50 dark:bg-sky-900/20 border border-sky-100 dark:border-sky-800/50 rounded-2xl flex items-start gap-3 transition-colors">
+          <div className="mb-6 p-4 glass-effect border border-sky-100/50 dark:border-sky-800/50 rounded-2xl flex items-start gap-3 transition-colors">
             <Info size={20} className="text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
             <p className="text-xs font-medium text-sky-800 dark:text-sky-300 leading-relaxed">
               <strong>Atenção:</strong> Apenas para <strong>novos escritórios</strong>. Se você é funcionário, peça o acesso ao seu administrador.
@@ -65,7 +65,7 @@ export default function Cadastro() {
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Briefcase className="h-5 w-5 text-slate-400 dark:text-slate-500 group-focus-within:text-indigo-600" />
                 </div>
-                <input type="text" required className="block w-full pl-12 pr-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-indigo-500 text-sm transition-all bg-slate-50 dark:bg-slate-950/50 text-slate-900 dark:text-white outline-none shadow-sm" placeholder="Ex: Silva & Associados" value={form.nome_escritorio} onChange={e => setForm({...form, nome_escritorio: e.target.value})} />
+                <input type="text" required className="block w-full pl-12 pr-4 py-3.5 glass-effect rounded-2xl focus:ring-2 focus:ring-indigo-500 text-sm transition-all text-slate-900 dark:text-white outline-none shadow-sm" placeholder="Ex: Silva & Associados" value={form.nome_escritorio} onChange={e => setForm({...form, nome_escritorio: e.target.value})} />
               </div>
             </div>
 
@@ -75,22 +75,27 @@ export default function Cadastro() {
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <User className="h-5 w-5 text-slate-400 dark:text-slate-500 group-focus-within:text-indigo-600" />
                 </div>
-                <input type="text" required className="block w-full pl-12 pr-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-indigo-500 text-sm transition-all bg-slate-50 dark:bg-slate-950/50 text-slate-900 dark:text-white outline-none shadow-sm" placeholder="Doutor(a) João da Silva" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+                <input type="text" required className="block w-full pl-12 pr-4 py-3.5 glass-effect rounded-2xl focus:ring-2 focus:ring-indigo-500 text-sm transition-all text-slate-900 dark:text-white outline-none shadow-sm" placeholder="Doutor(a) João da Silva" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 ml-1">E-mail</label>
-                <input type="email" required className="block w-full px-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-indigo-500 text-sm transition-all bg-slate-50 dark:bg-slate-950/50 text-slate-900 dark:text-white shadow-sm outline-none" placeholder="adv@escritorio.com" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+                <input type="email" required className="block w-full px-4 py-3.5 glass-effect rounded-2xl focus:ring-2 focus:ring-indigo-500 text-sm transition-all text-slate-900 dark:text-white shadow-sm outline-none" placeholder="adv@escritorio.com" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 ml-1">Criar Senha</label>
-                <input type="password" required minLength={8} className="block w-full px-4 py-3.5 border border-slate-300 dark:border-slate-700 rounded-2xl focus:ring-2 focus:ring-indigo-500 text-sm transition-all bg-slate-50 dark:bg-slate-950/50 text-slate-900 dark:text-white shadow-sm outline-none" placeholder="Mín. 8 caracteres" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 ml-1">WhatsApp</label>
+                <input type="text" required className="block w-full px-4 py-3.5 glass-effect rounded-2xl focus:ring-2 focus:ring-indigo-500 text-sm transition-all text-slate-900 dark:text-white shadow-sm outline-none" placeholder="(11) 99999-9999" value={form.telefone} onChange={e => setForm({...form, telefone: e.target.value})} />
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="w-full flex justify-center items-center gap-2 py-4 px-4 mt-6 rounded-2xl shadow-xl shadow-indigo-600/20 text-sm font-bold text-white bg-slate-900 dark:bg-indigo-600 hover:bg-indigo-600 transition-all active:scale-[0.98]">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 ml-1">Criar Senha</label>
+              <input type="password" required minLength={8} className="block w-full px-4 py-3.5 glass-effect rounded-2xl focus:ring-2 focus:ring-indigo-500 text-sm transition-all text-slate-900 dark:text-white shadow-sm outline-none" placeholder="Mín. 8 caracteres" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+            </div>
+
+            <button type="submit" disabled={loading} className="w-full flex justify-center items-center gap-2 py-4 px-4 mt-6 rounded-2xl shadow-xl shadow-indigo-600/20 text-sm font-bold text-white bg-gradient-to-r from-indigo-500 to-indigo-600 hover:shadow-indigo-500/30 transition-all active:scale-95 disabled:opacity-50">
               {loading ? <Loader2 className="animate-spin" size={20} /> : 'Criar Conta e Escritório'}
             </button>
           </form>

@@ -2,6 +2,7 @@ import { createContext, useState, useEffect } from 'react';
 import api from '../services/api';
  // 👈 Adicionado para a chamada direta do CSRF
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext({});
 
 export function AuthProvider({ children }) {
@@ -9,7 +10,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   // Motor de tema
-  const [theme, setTheme] = useState(localStorage.getItem('@LexSaaS:theme') || 'claro');
+  const [theme, setTheme] = useState(localStorage.getItem('@Iuris:theme') || 'escuro');
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -20,54 +21,43 @@ export function AuthProvider({ children }) {
       root.classList.remove('dark');
       root.style.colorScheme = 'light';
     }
-    localStorage.setItem('@LexSaaS:theme', theme);
+    localStorage.setItem('@Iuris:theme', theme);
   }, [theme]);
 
   const toggleTheme = (novoTema) => setTheme(novoTema);
 
-  // URL raiz do Laravel (sem /api)
-  const backendBaseURL = 'http://127.0.0.1:8000';
 
   useEffect(() => {
-    // Agora busca pelas chaves corretas que estão no seu api.js
-    const recoveredUser = localStorage.getItem('@LegalTech:user');
-    const token = localStorage.getItem('@LegalTech:token');
-
-    if (recoveredUser && token) {
-      setUser(JSON.parse(recoveredUser));
-      api.defaults.headers.Authorization = `Bearer ${token}`;
-    }
-    setLoading(false);
+    // 🔒 MEGA BRAIN: Fetch user from secure HttpOnly cookie session via /me
+    api.get('/me')
+      .then(response => {
+        setUser(response.data);
+      })
+      .catch(() => {
+        setUser(null);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   const signIn = async (email, password) => {
-    // 👇 Removemos completamente o axios.get('/sanctum/csrf-cookie') daqui!
+    // 1. Pré-flight CSRF (Obrigatório para Sanctum SPA)
+    await api.get(`http://${window.location.hostname}:8000/sanctum/csrf-cookie`);
     
-    // Vamos direto para a rota de login da sua API
+    // 2. Login (O Backend agora envia HttpOnly Cookie)
     const response = await api.post('/login', { email, password });
     
-    const { user, access_token } = response.data;
-    
-    localStorage.setItem('@LegalTech:user', JSON.stringify(user));
-    localStorage.setItem('@LegalTech:token', access_token);
-    
-    api.defaults.headers.Authorization = `Bearer ${access_token}`;
-    setUser(user);
+    // O Cookie 'laravel_session' e 'XSRF-TOKEN' já estão no navegador!
+    setUser(response.data.user);
   };
 
   const signUp = async (dados) => {
-  
-  const response = await api.post('/register', dados);
-    const { user, access_token } = response.data;
-    
-    localStorage.setItem('@LegalTech:user', JSON.stringify(user));
-    localStorage.setItem('@LegalTech:token', access_token);
-    
-    api.defaults.headers.Authorization = `Bearer ${access_token}`;
-    setUser(user);
+    await api.get(`http://${window.location.hostname}:8000/sanctum/csrf-cookie`);
+    const response = await api.post('/register', dados);
+    setUser(response.data.user);
   };
 
-  // 👇 Função reconstruída e atualizada 👇
   const signOut = async () => {
     try {
       await api.post('/logout');
@@ -75,10 +65,7 @@ export function AuthProvider({ children }) {
       console.error("Erro ao fazer logout:", e);
     }
     
-    // Limpa as chaves corretas do armazenamento local
-    localStorage.removeItem('@LegalTech:user');
-    localStorage.removeItem('@LegalTech:token');
-    api.defaults.headers.Authorization = null;
+    // O Sanctum invalida a sessão no servidor. Limpamos o state.
     setUser(null);
   };
 

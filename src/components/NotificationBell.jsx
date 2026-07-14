@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, FileText, AlertCircle, CheckCircle, Info, DollarSign } from 'lucide-react';
+import { Bell, FileText, AlertCircle, CheckCircle, Info, DollarSign, MessageSquare } from 'lucide-react'; // <-- MessageSquare adicionado
 import api from '../services/api';
 
 export default function NotificationBell() {
@@ -17,10 +17,20 @@ export default function NotificationBell() {
   };
 
   useEffect(() => {
+    // 1. Carrega assim que o componente é montado
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     carregarNotificacoes();
+
+    // 2. ADICIONADO: Polling silencioso a cada 15 segundos para alertas em tempo real
+    const intervalo = setInterval(() => {
+      if (!document.hidden) carregarNotificacoes();
+    }, 15000);
+
+    return () => clearInterval(intervalo);
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isOpen) carregarNotificacoes();
   }, [isOpen]);
 
@@ -51,17 +61,18 @@ export default function NotificationBell() {
       try {
         await api.put(`/notificacoes/${id}/ler`);
         setNotifications(notifications.map(n => n.id === id ? { ...n, lida: true } : n));
-      } catch (error) {}
+      } catch { /* ignore */ }
     }
   };
 
-  // 👇 ADICIONADO: O mapeamento para o ícone de Dinheiro (Financeiro) 👇
   const getIconConfig = (tipo) => {
     switch(tipo) {
       case 'financeiro': return { icon: DollarSign, color: 'text-rose-600', bg: 'bg-rose-100 dark:bg-rose-900/30' };
       case 'documento': return { icon: FileText, color: 'text-sky-500', bg: 'bg-sky-100 dark:bg-sky-900/30' };
       case 'prazo': return { icon: AlertCircle, color: 'text-rose-500', bg: 'bg-rose-100 dark:bg-rose-900/30' };
-      case 'processo': return { icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-100 dark:bg-emerald-900/30' };
+      case 'processo': return { icon: CheckCircle, color: 'text-indigo-500', bg: 'bg-indigo-100 dark:bg-indigo-900/30' };
+      // 👇 ADICIONADO: Estilo visual exclusivo para novos Leads do WhatsApp 👇
+      case 'lead': return { icon: MessageSquare, color: 'text-emerald-500', bg: 'bg-emerald-100 dark:bg-emerald-900/30' }; 
       default: return { icon: Info, color: 'text-indigo-500', bg: 'bg-indigo-100 dark:bg-indigo-900/30' };
     }
   };

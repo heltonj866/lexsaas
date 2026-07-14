@@ -1,8 +1,50 @@
 import { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import NotificationBell from './NotificationBell';
-import { Menu } from 'lucide-react'; 
+import { Menu, Clock, AlertTriangle, X, Zap } from 'lucide-react';
+import api from '../services/api';
+
+function TrialBanner() {
+  const [billing, setBilling] = useState(null);
+  const [dismissed, setDismissed] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    api.get('/billing/status').then(res => setBilling(res.data)).catch(() => {});
+  }, []);
+
+  if (!billing || billing.status !== 'trial' || billing.dias_restantes === null || dismissed) return null;
+  const dias = billing.dias_restantes;
+  if (dias > 7) return null;
+
+  const isUrgente = dias <= 2;
+
+  return (
+    <div className={`relative flex items-center justify-between gap-4 px-5 py-2 text-xs font-semibold shrink-0 transition-all
+      ${isUrgente
+        ? 'bg-red-500/10 border-b border-red-500/20 text-red-400'
+        : 'border-b text-amber-400'}`}
+      style={!isUrgente ? { background: 'rgba(245,158,11,0.06)', borderColor: 'rgba(245,158,11,0.15)' } : {}}>
+      <div className="flex items-center gap-2">
+        {isUrgente ? <AlertTriangle size={13} className="shrink-0" /> : <Zap size={13} className="shrink-0" />}
+        <span>
+          {dias === 0 ? 'Teste expira hoje!' : `Teste gratuito: ${dias} dia${dias !== 1 ? 's' : ''} restante${dias !== 1 ? 's' : ''}.`}
+          {' '}
+          <button
+            onClick={() => navigate('/planos')}
+            className="underline underline-offset-2 hover:opacity-75 transition-opacity"
+          >
+            Assinar agora
+          </button>
+        </span>
+      </div>
+      <button onClick={() => setDismissed(true)} className="p-0.5 rounded hover:opacity-60 transition-opacity shrink-0">
+        <X size={12} />
+      </button>
+    </div>
+  );
+}
 
 export function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 768);
@@ -17,38 +59,41 @@ export function Layout() {
   }, []);
 
   return (
-    // 👇 ADICIONADO: text-slate-900 dark:text-white para os textos das outras abas
-    <div className="flex h-[100dvh] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden font-sans transition-colors duration-300">
-      
+    <div className="flex h-[100dvh] overflow-hidden" style={{ background: '#07091A', color: '#F1F5F9' }}>
+
+      {/* Overlay mobile */}
       {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden transition-opacity"
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 md:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
-      
+
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden w-full relative">
-        
-        {/* Header agora alterna entre branco e slate-900 */}
-        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 sm:px-6 shrink-0 z-20 shadow-sm transition-colors duration-300">
-          
-          <button 
+
+        {/* Trial Banner */}
+        <TrialBanner />
+
+        {/* Header */}
+        <header className="h-14 flex items-center justify-between px-4 sm:px-6 shrink-0 z-20 glass-effect">
+          <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 -ml-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-colors active:scale-95"
+            className="p-2 -ml-1.5 rounded-lg transition-colors text-slate-500 hover:text-slate-300 hover:bg-white/[0.05]"
           >
-            <Menu size={24} />
+            <Menu size={20} />
           </button>
 
-          <div className="flex-1"></div>
+          <div className="flex-1" />
           <NotificationBell />
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 scroll-smooth relative">
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
-        
+
       </div>
     </div>
   );

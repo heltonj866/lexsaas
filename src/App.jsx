@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
-// 1. IMPORTANTE: Importar o Provedor de Autenticação
 import { AuthProvider } from './contexts/AuthContext'; 
 
 import Login from './pages/auth/Login';
@@ -16,34 +15,34 @@ import Tarefas from './pages/Tarefas';
 import Documentos from './pages/Documentos';
 import ClienteDetalhes from './pages/ClienteDetalhes';
 import ProcessoDetalhes from './pages/ProcessoDetalhes';
-
-// 👇 1. IMPORTAMOS A NOVA PÁGINA AQUI 👇
 import Configuracoes from './pages/Configuracoes'; 
+import Atendimentos from './pages/Atendimentos'; 
+import RelatorioWhatsApp from './pages/RelatorioWhatsApp';
+import Modelos from './pages/Modelos';
+import SuperAdminLeads from './pages/SuperAdminLeads';
 
-// 2. Verifique se o import do Layout e ProtectedRoute está correto
 import { Layout } from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute'; 
 
 function App() {
   return (
     <BrowserRouter>
-      {/* O AuthProvider deve abraçar TUDO para a Sidebar e as Rotas funcionarem */}
       <AuthProvider>
         <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
         
         <Routes>
-          {/* Rota Pública */}
+          {/* ROTAS PÚBLICAS (Sem menu lateral) */}
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
 
-          {/* 3. ESTRUTURA DE ROTAS PROTEGIDAS */}
+          {/* ROTAS PRIVADAS DO SISTEMA (Com menu lateral e margens) */}
           <Route element={<ProtectedRoute />}>
-            {/* O Layout é o pai que contém a Sidebar e o <Outlet /> */}
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/atendimentos" element={<Atendimentos />} />
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/clientes/:id" element={<ClienteDetalhes />} />
               <Route path="/processos" element={<Processos />} />
@@ -51,13 +50,15 @@ function App() {
               <Route path="/tarefas" element={<Tarefas />} />
               <Route path="/documentos" element={<Documentos />} />
               <Route path="/processos/:id" element={<ProcessoDetalhes />} />
-              
-              {/* 👇 2. ADICIONAMOS A ROTA DE CONFIGURAÇÕES AQUI 👇 */}
               <Route path="/configuracoes" element={<Configuracoes />} />
+              <Route path="/modelos" element={<Modelos />} />
+              <Route path="/superadmin/leads" element={<SuperAdminLeads />} />
+              
+              {/* ✅ ROTA CORRIGIDA: Agora o relatório está dentro do Layout! */}
+              <Route path="/relatorios/whatsapp" element={<RelatorioWhatsApp />} />
             </Route>
           </Route>
 
-          {/* Redirecionamento para evitar ecrãs em branco em rotas inexistentes */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>
